@@ -221,9 +221,19 @@
       updateHeader();
     }).catch(function () {});
   }
+  function loadHealth() {
+    return api("/api/health").then(function (health) {
+      var ai = health.ai || {};
+      var db = health.database || {};
+      var model = ai.opencode_configured ? ai.opencode_model : ai.agy_model;
+      $("#mini-health").innerHTML =
+        '<div class="health-line"><span class="health-dot ' + (db.ok ? "" : "bad") + '"></span>DB ' + (db.ok ? "online" : "offline") + '</div>' +
+        '<div class="health-line"><span class="health-dot ' + (ai.agy_installed || ai.opencode_configured ? "" : "warn") + '"></span>' + esc(model || "No AI provider") + '</div>';
+    }).catch(function () {});
+  }
   function refresh() {
     if (state.view === "settings") { renderSettings(); return; }
-    return Promise.all([loadProjects(), loadTasks()]);
+    return Promise.all([loadProjects(), loadTasks()]).then(loadHealth);
   }
 
   /* Detail */

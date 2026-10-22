@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
+from ...services import projects as project_service
 from ...services import tasks as task_service
+from ...services import usage as usage_service
 from ...services.errors import ConflictError, NotFound, ValidationError
+from ...timeutils import now_iso
 from ..deps import get_db, get_settings, verify_web_origin
 from ..models import OrderRequest, TaskCreate, TaskUpdate
 
@@ -22,6 +25,26 @@ def _counts(session: Session, settings) -> dict:
     return {
         key: len(task_service.list_tasks(session, view=view, tz_name=settings.timezone))
         for key, view in names.items()
+    }
+
+
+@router.get("/mobile/bootstrap")
+def mobile_bootstrap(
+    request: Request,
+    session: Session = Depends(get_db),
+    settings=Depends(get_settings),
+):
+    rows = task_service.list_tasks(session, view="board", tz_name=settings.timezone)
+    return {
+        "server_time": now_iso(),
+        "timezone": settings.timezone,
+        "projects": [
+            project_service.project_payload(session, p)
+            for p in project_service.list_projects(session)
+        ],
+        "tasks": [task_service.task_payload(session, t) for t in rows],
+        "counts": _counts(session, settings),
+        "usage": usage_service.usage_summary(session, settings, request.app.state.db, 7),
     }
 
 
