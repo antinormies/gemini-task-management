@@ -1,9 +1,9 @@
-# AI Integration — Text (`agy`) + Voice (Gemini)
+# AI Integration — Text (`agy`) + Voice (OpenCode / Gemini)
 
-**Status:** `agy` text contract verified on 1.3.6, 2026-10-22; installed binary is **1.4.5** and must be re-baselined before Phase 3. Voice path added for the Android client.
+**Status:** implemented on `feat/rock`. `agy` text contract was verified on 1.3.6; installed binary is **1.4.5**. OpenCode Go (`deepseek-v4.1-flash`) is the configured voice fallback and works end-to-end. Re-baseline `agy` 1.4.5 before relying on the text contract in production.
 **Machine:** Linux, Python 3.14.4, `agy` at `~/.local/bin/agy` (1.4.5 installed)
 **Model used for the text spike:** Gemini 3.8 Flash (High/Low via `agy`)
-**Voice path:** Android device speech recognition → transcript → Gemini 3.8 Flash **text** + structured output; cloud audio is v1.1
+**Voice path:** Android device speech recognition → transcript → OpenCode Go (`deepseek-v4.1-flash`) or Gemini text + structured output; cloud audio is v1.1
 **Related:** [`PLAN.md`](PLAN.md) · [`MOBILE.md`](MOBILE.md) · [`DATA_MODEL.md`](DATA_MODEL.md)
 
 ---
@@ -721,13 +721,13 @@ The model never sees audio and never writes the database.
 
 ### 13.3 Model and capabilities
 
-Use **`gemini-3.8-flash`** through the Gemini API:
+Default provider: **OpenCode Go `deepseek-v4.1-flash`** via the OpenAI-compatible endpoint `https://opencode.ai/zen/go/v1/chat/completions`. The backend sends the prompt and requests JSON (JSON Schema, then a JSON-object fallback). Gemini 3.8 Flash is the configured alternative.
 
 - Input: text (the transcript + GTM context).
-- Output: text.
-- **Structured outputs: supported.**
-- **Live API: not supported** by this model.
+- Output: text/JSON.
+- **Structured outputs: supported by both paths.**
 - No audio generation; TTS is done on Android.
+- OpenCode requests identify as `gtm-backend/0.1` and send `x-opencode-session`.
 
 Gemini 3.8 Live (`gemini-3.8-live`) is the model for full-duplex conversation, but it does **not** support structured outputs, has 15-minute audio session / ~10-minute connection limits, and requires session compression/resumption. It is v1.1, not the command path.
 
@@ -759,28 +759,34 @@ The response is parsed from the SDK's structured output, then validated by the s
 
 ```
 ai_runs: kind='voice_interpret', input_text=client transcript,
-         speech_ms, device_id, model='gemini-3.8-flash'
+         speech_ms, device_id, model='deepseek-v4.1-flash'
 ai_proposals: pending, actions_json, preview_json, assistant_message
 ```
 
 ### 13.6 Invocation shape
 
-The backend uses `google-genai` (2.32.0 resolves on Python 3.14.4). The exact call should follow the installed SDK's interactions API, but the shape is:
+The backend resolves a provider in order: OpenCode Go → Gemini → `agy` (voice defaults to OpenCode by config).
 
-1. create a client with `GTM_GEMINI_API_KEY`;
+**OpenCode Go**
+
+1. POST to `GTM_OPENCODE_BASE_URL` + `/chat/completions` with the transcript prompt.
+2. Send `response_format` as `json_schema` first, then `json_object`, then plain JSON.
+3. Identify as `gtm-backend/0.1` and send `x-opencode-session`.
+4. Parse `choices[0].message.content` as the schema object.
+
+**Gemini**
+
+1. create a `google-genai` client with `GTM_GEMINI_API_KEY`;
 2. send the server-built text prompt (context + transcript);
 3. request JSON/structured output with the shared schema;
-4. use low/no thinking and `temperature=0`;
-5. enforce a 20 s app-level timeout;
-6. validate and persist in the same request;
-7. map quota/429, timeout, invalid output, and safety blocks to stable error codes.
+4. enforce a 20 s app-level timeout.
 
-The key is **not** stored in the `agy` environment. `agy`'s allowlist remains `HOME`, `PATH`, `LANG`, `TZ`; the Gemini key only reaches the interpretation service.
+Both paths validate with the same Pydantic models and map quota/429, timeout, invalid output, and safety blocks to stable error codes. Keys never enter the `agy` environment; its allowlist remains `HOME`, `PATH`, `LANG`, `TZ`.
 
 ### 13.7 Fallback
 
 - **Recognizer unavailable/denied:** typed input remains; show a clear error and a Settings deep link.
-- **Gemini unavailable/disabled:** send the transcript to `POST /api/ai/interpret` and `agy`; label it **slow mode**.
+- **OpenCode/Gemini unavailable/disabled:** send the transcript to `POST /api/ai/interpret` and `agy`; label it **slow mode**.
 - **Model invalid/timeout:** no proposal is applied; Retry leaves the transcript in the composer.
 - Manual CRUD is unaffected.
 

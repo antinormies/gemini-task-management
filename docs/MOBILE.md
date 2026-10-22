@@ -1,9 +1,11 @@
 # Android Client — Build Plan
 
-**Status:** Revised, design-integrated plan for review; implementation not started
+**Status:** v0.1 implemented on `feat/rock`; this document remains the design/spec record
 **Related:** [PLAN.md](PLAN.md) · [AI_INTEGRATION.md](AI_INTEGRATION.md) · [DATA_MODEL.md](DATA_MODEL.md)
 **Design reference:** [reference.html](reference.html) ("Echo — voice task manager")
-**Proposed package:** `dev.antinormies.gtm` (confirm before scaffold)
+**Package:** `dev.antinormies.gtm` (implemented)
+
+> Implementation notes: the client uses **OkHttp + org.json** instead of Retrofit/kotlinx.serialization, and the three tabs, Board/List, detail sheet, device speech, TTS, pairing, and System screen are implemented. Build with `cd mobile && ./gradlew :app:assembleDebug`.
 
 ---
 

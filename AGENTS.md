@@ -2,58 +2,65 @@
 
 ## Project state
 
-- Planning is drafted for a **backend + native Android** split; implementation has not started.
-- Read `docs/PLAN.md` first, then `docs/MOBILE.md`, `docs/AI_INTEGRATION.md`, and `docs/DATA_MODEL.md` before changing code.
-- Android UI follows the synthesis in `docs/MOBILE.md` §0: 3-tab **Speak / Tasks / System**, Board/List, device-transcript voice. `docs/reference.html` is user-provided design input; do not edit it, and do not copy its sprint/vector/team concepts.
-- **Approval gate:** the user is reviewing the revised plan. Do not start implementation until the user explicitly approves it. After approval, execute the phases in `docs/PLAN.md` in order.
-- The only current source file is the original `main.py` PyCharm stub. It will be removed when `backend/app/` is created.
-- Target layout: `backend/` (FastAPI, SQLite, AI, web UI) and `mobile/` (Kotlin/Compose Android app). There is no PWA deliverable.
+- Implementation is in progress on `feat/rock`: a working FastAPI backend, web UI, SQLite store, AI proposal flow, and a native Android app.
+- Read `docs/PLAN.md`, `docs/MOBILE.md`, `docs/AI_INTEGRATION.md`, and `docs/DATA_MODEL.md` before changing behavior.
+- Android UI follows `docs/MOBILE.md` §0: 3-tab **Speak / Tasks / System**, Board/List, device-transcript voice. `docs/reference.html` is user-provided design input; do not edit it.
+- `main.py` was the old PyCharm stub and has been removed. Entry point is `backend/app/main.py`.
+- Layout: `backend/` (FastAPI, SQLite, web UI, JSON API, AI) and `mobile/` (Kotlin/Compose Android app). There is no PWA deliverable.
 
 ## Commands
 
-### Backend (after Phase 1 scaffold)
+### Backend
 
 - Use the repo-local `.venv` (CPython 3.14.4) directly; do not create a second venv.
 - Install: `cd backend && ../.venv/bin/pip install -e ".[dev]"`
-- Run: `cd backend && ../.venv/bin/python -m app`
-- Dev server alternative: `cd backend && ../.venv/bin/uvicorn app.main:app --reload --port 8765`
-- Quality gates, in order:
+- Run: `cd backend && ../.venv/bin/python -m app` (or `../.venv/bin/uvicorn app.main:app --port 8765`)
+- Quality gates:
   - `cd backend && ../.venv/bin/ruff format --check .`
   - `cd backend && ../.venv/bin/ruff check .`
   - `cd backend && ../.venv/bin/pytest -q`
 - Migrations: `cd backend && ../.venv/bin/alembic upgrade head`
-- Real AI contract tests are opt-in and may cost credits:
-  - Text: `cd backend && RUN_AGY_CONTRACT=1 ../.venv/bin/pytest tests/contract -q -s`
-  - Voice: `cd backend && RUN_GEMINI_CONTRACT=1 ../.venv/bin/pytest tests/contract -q -s`
+- Seed: `cd backend && ../.venv/bin/python scripts/seed.py`
+- Backup: `cd backend && ./scripts/backup.sh`
+- Opt-in live AI checks (cost credits):
+  - `cd backend && RUN_AGY_CONTRACT=1 ../.venv/bin/pytest tests/contract -q -s`
+  - `cd backend && RUN_GEMINI_CONTRACT=1 ../.venv/bin/pytest tests/contract -q -s`
 
-### Android (after Phase 4 scaffold)
+### Android
 
-- SDK: `$HOME/Android/Sdk` (platforms 35/36/37 installed). `local.properties` is git-ignored.
+- SDK: `$HOME/Android/Sdk`; `local.properties` is git-ignored.
 - Build: `cd mobile && ./gradlew :app:assembleDebug`
 - Install: `adb install -r app/build/outputs/apk/debug/app-debug.apk`
-- USB API tunnel for the debug build: `adb reverse tcp:8765 tcp:8765`
+- USB API tunnel: `adb reverse tcp:8765 tcp:8765`
 - Unit tests: `cd mobile && ./gradlew :app:testDebugUnitTest`
-- Instrumented tests: `cd mobile && ./gradlew :app:connectedDebugAndroidTest` (device must be connected)
+- Instrumented tests: `cd mobile && ./gradlew :app:connectedDebugAndroidTest` (device connected)
 - Lint: `cd mobile && ./gradlew :app:lintDebug`
-- Android Studio is not installed; use the committed Gradle wrapper from the terminal.
+- Android Studio is not required; use the committed Gradle wrapper.
+- Emulator testing on this host needs a reduced-memory AVD (`-memory 1536 -cores 2`); earlyoom can kill the default 4 GB emulator.
+
+### AI configuration
+
+- `backend/.env` is local and ignored. It must contain a non-empty `GTM_SECRET_KEY`.
+- Provider order for text is `agy` → OpenCode Go (`deepseek-v4.1-flash`) → Gemini, controlled by `GTM_AI_PROVIDER`.
+- Voice is transcript-only: the Android speech recognizer produces the text; the backend uses `GTM_VOICE_PROVIDER`. Never upload audio in v1.
+- Never print, commit, or log API keys, device tokens, or pairing codes.
 
 ### Environment facts
 
-- Python 3.14.4 at `.venv/bin/python`; SQLite 3.46.1 with FTS5; ffmpeg 8.0.1 available but not required for v1 transcript-only voice.
-- Android device: Infinix X6853 via ADB; Java 21; SDK at `~/Android/Sdk`.
-- Remote access: Tailscale is not installed yet; `cloudflared` is available. Tailscale Serve is the preferred HTTPS path.
-- No test, lint, typecheck, or format tooling is configured until the scaffolds land.
+- Python 3.14.4 at `.venv/bin/python`; SQLite 3.46.1 with FTS5; ffmpeg available but not required.
+- Android device: Infinix X6853 (when connected); Java 21; SDK at `~/Android/Sdk`.
+- Remote access: Tailscale Serve is the preferred HTTPS path; `cloudflared` is available. The backend must stay on loopback by default.
+- The current web UI is server-rendered Jinja plus a small vanilla JS client; no Node build is required.
 
 ## Git and delivery
 
 - Remote `origin` is `git@github-hobby:antinormies/gemini-task-management.git`.
-- The SSH host alias is **`github-hobby` with a hyphen** (defined in `~/.ssh/config`), not `github_hobby` or `github.com`. It authenticates as the `antinormies` account that owns the repo; `git@github.com` resolves to a different identity, so do not switch the remote URL.
-- Branch model: `master` is the GitHub default branch, `development` is the integration branch, and work happens on `feature/<name>` branches created from `development`.
+- The SSH host alias is **`github-hobby` with a hyphen** (defined in `~/.ssh/config`), not `github_hobby` or `github.com`. Do not switch the remote URL.
+- Branch model: `master` is the GitHub default, `development` is integration, and work happens on `feature/<name>` branches from `development`. Current work is on `feat/rock`.
+- Commit messages in this implementation use the requested `implementation: {small changes desc}` format.
 - Push new branches with `git push -u origin <branch>`.
-- The current docs are staged on `feature/project-setup`. After approval, commit them, merge through `development`, and start `feature/foundation`.
 
 ## Repository hygiene
 
-- `.gitignore` intentionally excludes `.venv/`, `.idea/`, `*.iml`, `__pycache__/`, and `.env*`.
-- When `mobile/` is scaffolded, also ignore `mobile/local.properties`, `.gradle/`, `build/`, `.kotlin/`, `.cxx/`, `captures/`, `*.apk`, `*.aab`, and release keystores.
-- Never commit API keys, device tokens, pairing codes, `local.properties`, or signing material.
+- `.gitignore` excludes `.venv/`, `.idea/`, `*.iml`, `__pycache__/`, `.env*`, backend runtime DB/cache files, and Android build/local/signing artifacts.
+- Never commit `backend/.env`, API keys, device tokens, pairing codes, `mobile/local.properties`, or signing material.
