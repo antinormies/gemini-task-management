@@ -1,28 +1,28 @@
 # Gemini Task Management — Build Plan
 
-**Status:** Revised draft for approval — backend + native Android split
+**Status:** v0.1 implemented on `feat/rock` — this plan is retained as the design/decision record
 **Last updated:** 2026-10-23
 **Repo:** `antinormies/gemini-task-management`
 **Working name:** GTM
-**Current code:** only the PyCharm `main.py` stub; this plan replaces it with `backend/` and `mobile/`.
-**Approval gate:** do not start implementation until this revision is approved.
+**Current code:** implemented in `backend/` and `mobile/`; the old `main.py` stub has been removed.
+**Approval:** received; implementation started 2026-10-23. See `README.md` for run instructions.
 
 ### Revision summary (2026-10-23)
 
 - Repository is split into `backend/` (FastAPI, SQLite, web UI, AI) and `mobile/` (native Kotlin/Compose Android app).
 - Android is a first-class client: pairing, task CRUD, voice capture, TTS, proposal review.
 - The Android UI is reconciled with `docs/reference.html`: a 3-tab **Speak / Tasks / System** shell, a Board/List task surface, and a diagnostics screen.
-- Voice uses device speech recognition by default; only the transcript goes to Gemini 3.8 Flash with the same JSON schema. `agy` remains the text/async path and slow fallback. Cloud audio is v1.1.
+- Voice uses device speech recognition by default; only the transcript goes to the AI provider with the same JSON schema. Text uses `agy`; voice uses OpenCode Go (`deepseek-v4.1-flash`) by default, with Gemini/agy as fallbacks. Cloud audio is v1.1.
 - Device auth adds `devices` + `pairing_codes` tables and bearer-token middleware.
 - Remote access is loopback + Tailscale Serve HTTPS; no public bind.
 - Delivery plan is now 7 phases, **22–32 focused days** (27–40 with buffer).
-- No application code has been written. The root `main.py` stub is untouched.
+- v0.1 code is implemented. Backend tests pass, the web UI renders, and the debug APK builds and installs. `docs/reference.html` was used as the mobile design reference.
 
 ---
 
 ## 1. Executive summary
 
-GTM is a **single-user, local-first task manager** with a server-rendered web UI and a **native Android client**, both backed by one FastAPI service. Text commands run through the **Antigravity CLI (`agy`)**; low-latency phone voice commands use the **Gemini API** with the same action schema.
+GTM is a **single-user, local-first task manager** with a server-rendered web UI and a **native Android client**, both backed by one FastAPI service. Text commands run through the **Antigravity CLI (`agy`)**; phone voice commands use a device transcript and the same action schema, interpreted by OpenCode Go (`deepseek-v4.1-flash`) or Gemini.
 
 The core design rule:
 

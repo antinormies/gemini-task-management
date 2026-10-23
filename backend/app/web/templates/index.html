@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>GTM — Gemini Task Management</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body data-view="{{ view }}" data-project-id="{{ project_id }}">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">G</span>
+        <span class="brand-name">GTM</span>
+      </div>
+      <nav class="nav">
+        <a class="nav-item {% if view == 'today' %}is-active{% endif %}" href="/today">
+          <span class="nav-icon">◉</span><span>Today</span><span class="nav-count" data-count="today">{{ counts.today }}</span>
+        </a>
+        <a class="nav-item {% if view == 'inbox' %}is-active{% endif %}" href="/inbox">
+          <span class="nav-icon">▣</span><span>Inbox</span><span class="nav-count" data-count="inbox">{{ counts.inbox }}</span>
+        </a>
+        <a class="nav-item {% if view == 'upcoming' %}is-active{% endif %}" href="/upcoming">
+          <span class="nav-icon">◌</span><span>Upcoming</span><span class="nav-count" data-count="upcoming">{{ counts.upcoming }}</span>
+        </a>
+        <a class="nav-item {% if view == 'anytime' %}is-active{% endif %}" href="/anytime">
+          <span class="nav-icon">◇</span><span>Anytime</span>
+        </a>
+        <a class="nav-item {% if view == 'waiting' %}is-active{% endif %}" href="/waiting">
+          <span class="nav-icon">◷</span><span>Waiting</span><span class="nav-count" data-count="waiting">{{ counts.waiting }}</span>
+        </a>
+        <a class="nav-item {% if view == 'done' %}is-active{% endif %}" href="/done">
+          <span class="nav-icon">✓</span><span>Done</span><span class="nav-count" data-count="done">{{ counts.done }}</span>
+        </a>
+      </nav>
+
+      <div class="nav-section">
+        <div class="nav-section-head"><span>Projects</span><button class="icon-btn" id="new-project-btn" title="New project">+</button></div>
+        <div id="project-list">
+          {% for p in projects %}
+          <a class="nav-item nav-project {% if project_id == p.id %}is-active{% endif %}" href="/projects/{{ p.id }}">
+            <span class="project-dot" style="background: {{ p.color }}"></span>
+            <span>{{ p.name }}</span>
+            <span class="nav-count">{{ p.active_count }}</span>
+          </a>
+          {% endfor %}
+          {% if not projects %}<div class="empty-mini">No projects yet</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <a class="nav-item {% if view == 'settings' %}is-active{% endif %}" href="/settings">
+          <span class="nav-icon">⚙</span><span>Settings &amp; system</span>
+        </a>
+        <div class="sidebar-note">Local-first · private tailnet</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="headings">
+          <p class="eyebrow" id="eyebrow">{% if view == 'today' %}Today{% else %}{{ view|capitalize }}{% endif %}</p>
+          <h1 id="view-title">{% if view == 'today' %}My day{% elif view == 'settings' %}Settings &amp; system{% else %}{{ view|capitalize }}{% endif %}</h1>
+          <p class="subtitle" id="view-subtitle">A quiet place for the work that matters.</p>
+        </div>
+        <div class="top-actions">
+          <div class="search-wrap">
+            <input id="search-input" type="search" placeholder="Search tasks" autocomplete="off" aria-label="Search tasks">
+            <kbd>/</kbd>
+          </div>
+          <button class="btn btn-quiet" id="focus-command">Ask Gemini <kbd>⌘K</kbd></button>
+          <button class="btn btn-primary" id="quick-add-btn">New task</button>
+        </div>
+      </header>
+
+      <section class="command-bar" id="command-area">
+        <form id="command-form">
+          <span class="spark">✦</span>
+          <input id="command-input" type="text" placeholder="Tell Gemini what to change… e.g. “Move the report to Friday and make it urgent”" autocomplete="off">
+          <button class="btn btn-dark" type="submit">Interpret</button>
+        </form>
+        <div class="command-status" id="command-status" hidden></div>
+      </section>
+
+      <section class="workspace" id="workspace">
+        <div class="task-panel">
+          <div class="panel-head">
+            <div class="panel-title-row">
+              <h2 id="task-panel-title">Tasks</h2>
+              <span class="pill" id="task-count">0</span>
+            </div>
+            <div class="view-tabs" id="view-tabs">
+              <button class="tab-btn is-active" data-quick-view="today">Today</button>
+              <button class="tab-btn" data-quick-view="board">Board</button>
+              <button class="tab-btn" data-quick-view="all">All</button>
+            </div>
+          </div>
+          <div id="task-container" class="task-container">
+            <div class="loading">Loading tasks…</div>
+          </div>
+        </div>
+        <aside class="context-panel">
+          <div class="context-card">
+            <p class="eyebrow">Today</p>
+            <div class="context-date" id="context-date">—</div>
+            <div class="progress-line"><span id="context-progress">0 done</span><span id="context-total">0 open</span></div>
+            <div class="progress"><span id="progress-fill"></span></div>
+          </div>
+          <div class="context-card">
+            <p class="eyebrow">AI status</p>
+            <div id="mini-health" class="mini-health">Checking…</div>
+          </div>
+          <div class="context-card context-tip">
+            <p class="eyebrow">Tip</p>
+            <p>Press <kbd>c</kbd> to capture, <kbd>/</kbd> to search, <kbd>⌘K</kbd> for Gemini.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="settings-panel" id="settings-panel" hidden>
+        <div class="settings-grid">
+          <div class="settings-card">
+            <p class="eyebrow">Workspace</p>
+            <h2>Preferences</h2>
+            <div class="kv"><span>Timezone</span><strong>{{ settings.timezone }}</strong></div>
+            <div class="kv"><span>Work hours</span><strong>{{ settings.work_start }}–{{ settings.work_end }}</strong></div>
+            <div class="kv"><span>AI</span><strong>{{ 'Enabled' if settings.ai_enabled else 'Disabled' }}</strong></div>
+            <div class="kv"><span>Voice</span><strong>{{ 'Enabled' if settings.voice_enabled else 'Disabled' }}</strong></div>
+          </div>
+          <div class="settings-card">
+            <p class="eyebrow">Phone pairing</p>
+            <h2>Pair an Android device</h2>
+            <p class="muted">Generate a six-digit code, then enter it in the GTM Android app.</p>
+            <button class="btn btn-primary" id="pairing-code-btn">Generate code</button>
+            <div class="pairing-code" id="pairing-code" hidden></div>
+            <div class="device-list" id="device-list"></div>
+          </div>
+          <div class="settings-card">
+            <p class="eyebrow">Maintenance</p>
+            <h2>Local data</h2>
+            <div class="settings-actions">
+              <button class="btn btn-quiet" id="backup-btn">Back up database</button>
+              <button class="btn btn-quiet" id="rebuild-btn">Rebuild search index</button>
+            </div>
+            <div id="maintenance-note" class="muted"></div>
+          </div>
+          <div class="settings-card settings-card--wide">
+            <p class="eyebrow">Diagnostics</p>
+            <h2>Engine</h2>
+            <div id="health-details" class="health-details">Loading…</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+  <aside class="drawer" id="drawer" hidden aria-label="Task detail">
+    <div class="drawer-head">
+      <div><p class="eyebrow" id="detail-eyebrow">Task</p><h2 id="detail-title">Task</h2></div>
+      <button class="icon-btn" id="drawer-close" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </aside>
+
+  <div class="modal-backdrop" id="proposal-backdrop" hidden></div>
+  <section class="modal" id="proposal-modal" hidden aria-label="AI proposal">
+    <div class="modal-head"><div><p class="eyebrow">Gemini proposal</p><h2 id="proposal-title">Review changes</h2></div><button class="icon-btn" id="proposal-close" aria-label="Close">✕</button></div>
+    <p class="proposal-message" id="proposal-message"></p>
+    <div class="proposal-list" id="proposal-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="proposal-apply">Apply changes</button>
+      <button class="btn btn-quiet" id="proposal-reject">Discard</button>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
