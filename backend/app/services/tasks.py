@@ -224,6 +224,8 @@ def create_task(
         parent = get_task(session, parent_id)
         if _depth(session, parent) >= 3:
             raise ValidationError("Maximum subtask depth is 3")
+        if not project_id:
+            project_id = parent.project_id
     due_all_day = bool(data.get("due_all_day"))
     due_at = _normalize_due(data.get("due_at"), due_all_day, tz_name)
     estimate = data.get("estimate_minutes")
