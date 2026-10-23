@@ -109,7 +109,7 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.radialGradient(listOf(Color(0xFF141419), GtmColors.stage), radius = 950f))
+            .background(Brush.verticalGradient(listOf(GtmColors.stageTop, GtmColors.stage)))
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 22.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally

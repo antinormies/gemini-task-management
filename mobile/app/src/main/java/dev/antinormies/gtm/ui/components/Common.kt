@@ -44,11 +44,11 @@ fun priorityLabel(priority: String): String = when (priority) {
 }
 
 fun priorityColor(priority: String): Color = when (priority) {
-    "urgent" -> Color(0xFFB3261E)
-    "high" -> Color(0xFF8A4B00)
-    "medium" -> GtmColors.ink2
-    "low" -> GtmColors.meta
-    else -> GtmColors.meta
+    "urgent" -> Color(0xFFE5484D)
+    "high" -> Color(0xFFC47D00)
+    "medium" -> Color(0xFF8A8F98)
+    "low" -> Color(0xFF8A8F98)
+    else -> Color(0xFF8A8F98)
 }
 
 fun statusLabel(status: String): String = when (status) {
@@ -96,11 +96,13 @@ fun isOverdue(task: Task): Boolean {
 }
 
 @Composable
-fun Pill(text: String, color: Color = GtmColors.ink2, background: Color = GtmColors.surfaceSoft) {
-    Surface(color = background, shape = RoundedCornerShape(99.dp)) {
+fun Pill(text: String, color: Color = Color.Unspecified, background: Color = Color.Unspecified) {
+    val fg = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else color
+    val bg = if (background == Color.Unspecified) MaterialTheme.colorScheme.surfaceContainerHighest else background
+    Surface(color = bg, shape = RoundedCornerShape(99.dp)) {
         Text(
             text = text,
-            color = color,
+            color = fg,
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
         )
@@ -127,7 +129,7 @@ fun SectionLabel(text: String) {
     Text(
         text = text.uppercase(),
         style = MaterialTheme.typography.labelMedium,
-        color = GtmColors.muted
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 
@@ -155,7 +157,7 @@ fun TaskRow(
             Text(
                 text = task.title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (task.isDone) GtmColors.muted else GtmColors.ink,
+                color = if (task.isDone) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface,
                 textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -164,31 +166,31 @@ fun TaskRow(
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                 PriorityPill(task.priority)
                 if (showProject && task.projectName != null) {
-                    Text(task.projectName, style = MaterialTheme.typography.bodySmall, color = GtmColors.meta)
+                    Text(task.projectName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 dueLabel(task)?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = if (isOverdue(task)) GtmColors.danger else GtmColors.meta)
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = if (isOverdue(task)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 formatEstimate(task.estimateMinutes)?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = GtmColors.meta)
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        Text("›", style = MaterialTheme.typography.titleLarge, color = GtmColors.meta)
+        Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-fun TaskCard(task: Task, onOpen: () -> Unit) {
+fun TaskCard(task: Task, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = GtmColors.surface),
-        border = BorderStroke(1.dp, GtmColors.line)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(task.shortKey, style = MaterialTheme.typography.labelMedium, color = GtmColors.meta)
+                Text(task.shortKey, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.weight(1f))
                 formatEstimate(task.estimateMinutes)?.let { Pill(it) }
             }
@@ -196,7 +198,7 @@ fun TaskCard(task: Task, onOpen: () -> Unit) {
             Text(
                 task.title,
                 style = MaterialTheme.typography.titleMedium,
-                color = GtmColors.ink,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -204,10 +206,10 @@ fun TaskCard(task: Task, onOpen: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 PriorityPill(task.priority)
                 if (task.projectName != null) {
-                    Text(task.projectName, style = MaterialTheme.typography.bodySmall, color = GtmColors.meta)
+                    Text(task.projectName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 dueLabel(task)?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = if (isOverdue(task)) GtmColors.danger else GtmColors.meta)
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = if (isOverdue(task)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -220,8 +222,8 @@ fun EmptyState(title: String, body: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp, horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = GtmColors.ink)
+        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(6.dp))
-        Text(body, style = MaterialTheme.typography.bodyMedium, color = GtmColors.muted)
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

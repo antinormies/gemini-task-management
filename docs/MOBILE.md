@@ -1,6 +1,6 @@
 # Android Client — Build Plan
 
-**Status:** v0.1 implemented on `feat/rock`; this document remains the design/spec record
+**Status:** v0.1 implemented on `feat/rock`; this document remains the design/spec record. Typography is Plus Jakarta Sans, the app follows the phone's light/dark setting, and the board supports long-press drag between phases.
 **Related:** [PLAN.md](PLAN.md) · [AI_INTEGRATION.md](AI_INTEGRATION.md) · [DATA_MODEL.md](DATA_MODEL.md)
 **Design reference:** [reference.html](reference.html) ("Echo — voice task manager")
 **Package:** `dev.antinormies.gtm` (implemented)
@@ -91,7 +91,7 @@ The mobile client is a **thin client**. It never talks to SQLite, `agy`, or Gemi
 | Concern | Choice | Why |
 |---|---|---|
 | Language | Kotlin 2.x | First-class Android, coroutines, Compose |
-| UI | Jetpack Compose + Material 3 | Design-system tokens and custom surfaces |
+| UI | Jetpack Compose + reference design tokens | Custom light/dark surfaces; Material primitives only where useful |
 | Min SDK | 31 (Android 12) | Modern speech APIs, reasonable coverage |
 | Compile/target SDK | 36 initially; pin after Phase 4 SDK check | SDK 35/36/37 installed; avoid previews |
 | Build | Gradle Kotlin DSL + version catalog + wrapper | Reproducible CLI builds |
@@ -208,7 +208,7 @@ Reference scale: 12 / 14 / 17 / 21 / 28 / 40 / 56 / 80; body 1.47, display 1.05�
 
 - Reference frame: **390 × 844**; support **360–430 dp** width and edge-to-edge.
 - Status bar / gesture inset aware; no content under system bars.
-- Board columns: **76% of screen width, max 268 dp**, 12 dp gap, horizontal scroll with snap; a “Scroll sideways” hint.
+- Board columns: **248 dp** wide, 12 dp gap with a thin vertical divider, horizontal scroll; a “Scroll sideways” hint.
 - Bottom sheets: max 84% height, drag handle, scrim, focus trap.
 - Dialogs: max 300 dp wide alert style; permission alert uses two actions.
 
@@ -292,13 +292,14 @@ Layout, top to bottom:
 
 **Segmented control: Board / List**
 
-- **Board** (default): horizontal columns **To do**, **In progress**, **Waiting**, **Done**.
+- **Board** (default): horizontal columns **To do**, **In progress**, **Waiting**, **Done**, separated by a thin vertical rule.
   - To do includes `inbox` and `todo`; inbox cards get a small **Inbox** tag.
   - Waiting replaces the reference's Review column and uses the plan's `waiting` status.
   - Cancelled/archived cards are hidden.
   - Column header: name, count, task/estimate total, and a **+ Add** button prefilled with that status.
   - Card: short ID, estimate chip, title (2 lines), priority, project, due; no avatar.
-  - Horizontal scroll with snap; hint “Scroll sideways for Waiting and Done.”
+  - **Long-press a card and drag it to another column** to change phase. The board auto-scrolls while the card is held near the left or right edge. Dropping outside a column cancels.
+  - Horizontal scroll; hint “Scroll sideways for Waiting and Done.”
 - **List**: grouped by project; rows show title, short ID/status, estimate/due, priority.
   - Filter chips: **All / Today / Overdue**; Inbox is a group at the top.
   - Empty state per filter; search opens a full-screen sheet.

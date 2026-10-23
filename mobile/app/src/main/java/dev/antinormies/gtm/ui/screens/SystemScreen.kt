@@ -49,7 +49,7 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
                 TextButton(onClick = {
                     confirmUnpair = false
                     viewModel.unpair()
-                }) { Text("Unpair", color = GtmColors.danger) }
+                }) { Text("Unpair", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text("Cancel") } }
         )
@@ -58,15 +58,15 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(GtmColors.surfaceSoft)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 22.dp)
     ) {
-        Text("SYSTEM", style = MaterialTheme.typography.labelMedium, color = GtmColors.muted)
+        Text("SYSTEM", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(5.dp))
         Text("Usage & device", style = MaterialTheme.typography.headlineLarge)
         Spacer(Modifier.height(4.dp))
-        Text("Everything GTM keeps on this phone and on your local server.", style = MaterialTheme.typography.bodyMedium, color = GtmColors.muted)
+        Text("Everything GTM keeps on this phone and on your local server.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(18.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -82,7 +82,7 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
 
         SettingsCard(title = "AI usage", meta = "Last 7 days") {
             if (usage == null) {
-                Text("Loading usage…", color = GtmColors.muted, style = MaterialTheme.typography.bodySmall)
+                Text("Loading usage…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
                 KeyValue("Runs", usage.runs.toString())
                 KeyValue("Voice runs", usage.voiceRuns.toString())
@@ -104,7 +104,7 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
         Spacer(Modifier.height(12.dp))
         SettingsCard(title = "Engine", meta = health?.provider ?: "checking") {
             if (health == null) {
-                Text("Loading health…", color = GtmColors.muted, style = MaterialTheme.typography.bodySmall)
+                Text("Loading health…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
                 KeyValue("Database", if (health.dbOk) "online" else "offline")
                 KeyValue("agy", if (health.agyInstalled) health.agyModel else "not found")
@@ -116,7 +116,7 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
         Spacer(Modifier.height(12.dp))
         SettingsCard(title = "Paired devices", meta = state.devices.size.toString()) {
             if (state.devices.isEmpty()) {
-                Text("No paired devices.", color = GtmColors.muted, style = MaterialTheme.typography.bodySmall)
+                Text("No paired devices.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
                 state.devices.forEach { device ->
                     KeyValue(device.name, if (device.revoked) "revoked" else (device.lastSeenAt?.take(16)?.replace("T", " ") ?: "never seen"))
@@ -140,7 +140,7 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
         Text(
             "GTM 0.1.0 · Audio is handled by your phone's speech service. GTM receives only the transcript. Cloud audio is off.",
             style = MaterialTheme.typography.bodySmall,
-            color = GtmColors.meta
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(90.dp))
     }
@@ -150,14 +150,14 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
 private fun StatCard(value: String, label: String, note: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        color = GtmColors.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, GtmColors.line)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.padding(14.dp)) {
-            Text(value, style = MaterialTheme.typography.headlineMedium, color = GtmColors.ink)
-            Text(label, style = MaterialTheme.typography.bodySmall, color = GtmColors.ink2)
-            Text(note, style = MaterialTheme.typography.labelMedium, color = GtmColors.meta)
+            Text(value, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(note, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -165,15 +165,15 @@ private fun StatCard(value: String, label: String, note: String, modifier: Modif
 @Composable
 private fun SettingsCard(title: String, meta: String, content: @Composable () -> Unit) {
     Surface(
-        color = GtmColors.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(18.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, GtmColors.line),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Text(meta, style = MaterialTheme.typography.labelMedium, color = GtmColors.meta)
+                Text(meta, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(8.dp))
             content()
@@ -184,8 +184,8 @@ private fun SettingsCard(title: String, meta: String, content: @Composable () ->
 @Composable
 private fun KeyValue(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = GtmColors.muted, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = GtmColors.ink2)
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

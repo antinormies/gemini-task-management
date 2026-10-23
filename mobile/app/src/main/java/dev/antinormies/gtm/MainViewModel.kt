@@ -137,6 +137,21 @@ class MainViewModel(
         }
     }
 
+    fun moveTask(task: Task, status: String) {
+        if (task.status == status) return
+        val target = if (status == "todo" && task.status == "inbox") "todo" else status
+        _state.update { it.copy(busy = true) }
+        viewModelScope.launch {
+            runCatching { repository.updateTask(task, mapOf("status" to target)) }
+                .onSuccess {
+                    _state.update { state -> state.copy(busy = false) }
+                    toast("Moved to " + target.replace("_", " ") + ".")
+                    refresh()
+                }
+                .onFailure { fail(it) }
+        }
+    }
+
     fun addSubtask(task: Task, title: String) {
         if (title.isBlank()) return
         _state.update { it.copy(busy = true) }
