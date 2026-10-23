@@ -280,6 +280,7 @@ def update_task(
         "sort_order",
     }
     changed: list[tuple[str, Any, Any]] = []
+    old_status = task.status
     for field, value in changes.items():
         if field not in allowed:
             continue
@@ -313,6 +314,8 @@ def update_task(
             changed.append(("due_at", task.due_at, normalized))
             task.due_at = normalized
             task.due_all_day = 1 if all_day else 0
+    if task.status != old_status:
+        task.completed_at = now_iso() if task.status == "done" else None
     if "estimate_minutes" in changes:
         estimate = changes["estimate_minutes"]
         if estimate is not None:
