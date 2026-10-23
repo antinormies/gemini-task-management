@@ -48,6 +48,28 @@ class GtmRepository(
         TaskBundle(items, counts)
     }
 
+    suspend fun search(query: String): TaskBundle = withContext(Dispatchers.IO) {
+        val json = api.request("GET", "/api/search?q=" + url(query)) ?: JSONObject()
+        val items = mutableListOf<Task>()
+        json.optJSONArray("items")?.let { array ->
+            for (i in 0 until array.length()) items.add(Task.from(array.getJSONObject(i)))
+        }
+        val counts = mutableMapOf<String, Int>()
+        json.optJSONObject("counts")?.let { obj ->
+            obj.keys().forEach { key -> counts[key] = obj.optInt(key) }
+        }
+        TaskBundle(items, counts)
+    }
+
+    suspend fun createSubtask(parentId: String, title: String): Boolean = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("title", title)
+            .put("status", "todo")
+            .put("parent_id", parentId)
+        api.request("POST", "/api/tasks", body)
+        true
+    }
+
     suspend fun projects(): List<Project> = withContext(Dispatchers.IO) {
         val json = api.request("GET", "/api/projects") ?: JSONObject()
         val result = mutableListOf<Project>()

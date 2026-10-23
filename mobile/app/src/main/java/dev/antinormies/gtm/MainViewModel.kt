@@ -123,6 +123,34 @@ class MainViewModel(
         }
     }
 
+    fun search(query: String) {
+        if (query.isBlank()) {
+            refresh()
+            return
+        }
+        viewModelScope.launch {
+            runCatching { repository.search(query) }
+                .onSuccess { bundle ->
+                    _state.update { it.copy(tasks = bundle.items, counts = bundle.counts) }
+                }
+                .onFailure { fail(it) }
+        }
+    }
+
+    fun addSubtask(task: Task, title: String) {
+        if (title.isBlank()) return
+        _state.update { it.copy(busy = true) }
+        viewModelScope.launch {
+            runCatching { repository.createSubtask(task.id, title.trim()) }
+                .onSuccess {
+                    _state.update { state -> state.copy(busy = false) }
+                    toast("Subtask added.")
+                    openTask(task.id)
+                }
+                .onFailure { fail(it) }
+        }
+    }
+
     fun openTask(id: String) {
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {

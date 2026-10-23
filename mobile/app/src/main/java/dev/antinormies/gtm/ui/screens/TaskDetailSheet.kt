@@ -54,7 +54,8 @@ fun TaskDetailSheet(
     onClose: () -> Unit,
     onSave: (Task, Map<String, Any?>) -> Unit,
     onToggle: (Task) -> Unit,
-    onArchive: (Task) -> Unit
+    onArchive: (Task) -> Unit,
+    onAddSubtask: (Task, String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var title by remember(task.id) { mutableStateOf(task.title) }
@@ -75,6 +76,7 @@ fun TaskDetailSheet(
     var estimate by remember(task.id) { mutableStateOf(task.estimateMinutes?.toString() ?: "") }
     var tags by remember(task.id) { mutableStateOf(task.tags.joinToString(", ") { it.name }) }
     var confirmArchive by remember { mutableStateOf(false) }
+    var newSubtask by remember(task.id) { mutableStateOf("") }
 
     if (confirmArchive) {
         AlertDialog(
@@ -208,6 +210,19 @@ fun TaskDetailSheet(
             TextButton(onClick = { confirmArchive = true }) { Text("Archive", color = GtmColors.danger) }
             Spacer(Modifier.height(12.dp))
             SectionLabel("Checklist")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = newSubtask,
+                    onValueChange = { newSubtask = it },
+                    placeholder = { Text("Add a subtask") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = {
+                    onAddSubtask(task, newSubtask)
+                    newSubtask = ""
+                }) { Text("Add") }
+            }
             if (task.subtasks.isEmpty()) {
                 Text("No subtasks yet.", style = MaterialTheme.typography.bodySmall, color = GtmColors.meta, modifier = Modifier.padding(vertical = 6.dp))
             } else {

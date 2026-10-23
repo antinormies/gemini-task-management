@@ -18,14 +18,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,6 +57,12 @@ fun TasksScreen(
 ) {
     var board by remember { mutableStateOf(true) }
     var filter by remember { mutableStateOf("all") }
+    var query by remember { mutableStateOf("") }
+
+    LaunchedEffect(query) {
+        delay(250)
+        viewModel.search(query)
+    }
 
     val filtered = state.tasks.filter { task ->
         when (filter) {
@@ -106,7 +115,15 @@ fun TasksScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = GtmColors.muted
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Search tasks") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = GtmColors.line, shape = RoundedCornerShape(8.dp)) {
                     Row(Modifier.padding(2.dp)) {

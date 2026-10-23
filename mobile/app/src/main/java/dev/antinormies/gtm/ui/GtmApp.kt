@@ -166,7 +166,8 @@ fun GtmApp(viewModel: MainViewModel) {
             onClose = { viewModel.closeTask() },
             onSave = { selected, values -> viewModel.saveTask(selected, values) },
             onToggle = { viewModel.toggleTask(it) },
-            onArchive = { viewModel.archiveTask(it) }
+            onArchive = { viewModel.archiveTask(it) },
+            onAddSubtask = { selected, title -> viewModel.addSubtask(selected, title) }
         )
     }
 
