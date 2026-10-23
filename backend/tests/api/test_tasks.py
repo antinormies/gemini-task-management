@@ -66,3 +66,30 @@ def test_project_and_search(client):
     r = client.get("/api/search?q=Quarterly")
     assert r.status_code == 200
     assert r.json()["items"]
+
+
+def test_subtask_inherits_parent_project(client):
+    project = client.post(
+        "/api/projects", json={"name": "Inheritance"}, headers={"X-GTM-Request": "1"}
+    ).json()["project"]
+    parent = client.post(
+        "/api/tasks",
+        json={"title": "Parent", "status": "todo", "project_id": project["id"]},
+        headers={"X-GTM-Request": "1"},
+    ).json()["task"]
+    child = client.post(
+        "/api/tasks",
+        json={"title": "Child", "status": "todo", "parent_id": parent["id"]},
+        headers={"X-GTM-Request": "1"},
+    ).json()["task"]
+    assert child["project_id"] == project["id"]
+
+
+def test_mobile_bootstrap(client):
+    response = client.get("/api/mobile/bootstrap")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert "projects" in body
+    assert "tasks" in body
+    assert "usage" in body
+    assert "server_time" in body
