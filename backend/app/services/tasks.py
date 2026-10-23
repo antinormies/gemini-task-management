@@ -22,7 +22,7 @@ ACTIVE = ("inbox", "todo", "in_progress", "waiting")
 ALL_STATUSES = ("inbox", "todo", "in_progress", "waiting", "done", "cancelled")
 PRIORITIES = ("none", "low", "medium", "high", "urgent")
 TRANSITIONS = {
-    "inbox": {"todo", "cancelled"},
+    "inbox": {"todo", "in_progress", "waiting", "done", "cancelled"},
     "todo": {"in_progress", "waiting", "done", "cancelled"},
     "in_progress": {"waiting", "todo", "done", "cancelled"},
     "waiting": {"todo", "in_progress", "done", "cancelled"},

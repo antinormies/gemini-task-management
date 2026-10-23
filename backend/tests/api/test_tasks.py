@@ -93,3 +93,17 @@ def test_mobile_bootstrap(client):
     assert "tasks" in body
     assert "usage" in body
     assert "server_time" in body
+
+def test_inbox_can_move_to_progress(client):
+    task = client.post(
+        "/api/tasks",
+        json={"title": "Direct drag", "status": "inbox"},
+        headers={"X-GTM-Request": "1"},
+    ).json()["task"]
+    response = client.patch(
+        "/api/tasks/" + task["id"],
+        json={"status": "in_progress"},
+        headers={"X-GTM-Request": "1"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["task"]["status"] == "in_progress"
