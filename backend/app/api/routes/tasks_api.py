@@ -16,11 +16,12 @@ router = APIRouter(prefix="/api", tags=["tasks"])
 
 def _counts(session: Session, settings) -> dict:
     names = {
-        "inbox": "inbox",
-        "today": "today",
-        "upcoming": "upcoming",
-        "waiting": "waiting",
+        "backlog": "backlog",
+        "research": "research",
+        "sprint": "sprint",
+        "review": "review",
         "done": "done",
+        "all": "all",
     }
     return {
         key: len(task_service.list_tasks(session, view=view, tz_name=settings.timezone))

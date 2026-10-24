@@ -26,7 +26,7 @@ class Task(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
-    status: Mapped[str] = mapped_column(String(20), default="inbox")
+    status: Mapped[str] = mapped_column(String(20), default="backlog")
     priority: Mapped[str] = mapped_column(String(10), default="none")
     due_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     due_all_day: Mapped[int] = mapped_column(Integer, default=0)

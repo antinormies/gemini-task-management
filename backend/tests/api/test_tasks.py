@@ -9,12 +9,12 @@ def test_create_update_complete(client):
     due = iso(now_utc() + timedelta(hours=2))
     r = client.post(
         "/api/tasks",
-        json={"title": "Write report", "status": "todo", "due_at": due, "priority": "high"},
+        json={"title": "Write report", "status": "backlog", "due_at": due, "priority": "high"},
         headers={"X-GTM-Request": "1"},
     )
     assert r.status_code == 200, r.text
     task = r.json()["task"]
-    assert task["status"] == "todo"
+    assert task["status"] == "backlog"
     assert task["short_key"].startswith("GTM-")
     r = client.get("/api/tasks?view=today")
     assert r.status_code == 200
@@ -42,7 +42,9 @@ def test_create_update_complete(client):
 
 def test_archive_and_reopen(client):
     r = client.post(
-        "/api/tasks", json={"title": "Archive me", "status": "todo"}, headers={"X-GTM-Request": "1"}
+        "/api/tasks",
+        json={"title": "Archive me", "status": "backlog"},
+        headers={"X-GTM-Request": "1"},
     )
     task = r.json()["task"]
     r = client.delete(f"/api/tasks/{task['id']}", headers={"X-GTM-Request": "1"})
@@ -59,7 +61,7 @@ def test_project_and_search(client):
     project = r.json()["project"]
     r = client.post(
         "/api/tasks",
-        json={"title": "Quarterly planning", "project_id": project["id"], "status": "todo"},
+        json={"title": "Quarterly planning", "project_id": project["id"], "status": "backlog"},
         headers={"X-GTM-Request": "1"},
     )
     assert r.status_code == 200, r.text
@@ -74,12 +76,12 @@ def test_subtask_inherits_parent_project(client):
     ).json()["project"]
     parent = client.post(
         "/api/tasks",
-        json={"title": "Parent", "status": "todo", "project_id": project["id"]},
+        json={"title": "Parent", "status": "backlog", "project_id": project["id"]},
         headers={"X-GTM-Request": "1"},
     ).json()["task"]
     child = client.post(
         "/api/tasks",
-        json={"title": "Child", "status": "todo", "parent_id": parent["id"]},
+        json={"title": "Child", "status": "backlog", "parent_id": parent["id"]},
         headers={"X-GTM-Request": "1"},
     ).json()["task"]
     assert child["project_id"] == project["id"]
@@ -94,16 +96,18 @@ def test_mobile_bootstrap(client):
     assert "usage" in body
     assert "server_time" in body
 
-def test_inbox_can_move_to_progress(client):
+
+def test_legacy_status_maps_and_moves_to_sprint(client):
     task = client.post(
         "/api/tasks",
         json={"title": "Direct drag", "status": "inbox"},
         headers={"X-GTM-Request": "1"},
     ).json()["task"]
+    assert task["status"] == "backlog"
     response = client.patch(
         "/api/tasks/" + task["id"],
         json={"status": "in_progress"},
         headers={"X-GTM-Request": "1"},
     )
     assert response.status_code == 200, response.text
-    assert response.json()["task"]["status"] == "in_progress"
+    assert response.json()["task"]["status"] == "sprint"
