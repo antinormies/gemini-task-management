@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="512" height="512" role="img" aria-label="Call Task AI">
+  <title>Call Task AI</title>
+  <rect width="108" height="108" rx="24" fill="#0B0D10"/>
+  <path fill="#F7F8FA" d="M39 30 H66 A11 11 0 0 1 77 41 V53 A11 11 0 0 1 66 64 H53 L40 76 V64 H39 A11 11 0 0 1 28 53 V41 A11 11 0 0 1 39 30 Z"/>
+  <path fill="#5B8CFF" d="M52 37 C53 44.5 56.5 48 64 49 C56.5 50 53 53.5 52 61 C51 53.5 47.5 50 40 49 C47.5 48 51 44.5 52 37 Z"/>
+</svg>
