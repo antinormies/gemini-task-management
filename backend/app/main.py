@@ -44,7 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         for task in list(app.state.background_tasks):
             task.cancel()
 
-    app = FastAPI(title="GTM — Gemini Task Management", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Call Task AI", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.templates = pages.TEMPLATES
     app.mount(

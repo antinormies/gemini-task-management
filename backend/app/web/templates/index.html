@@ -3,40 +3,72 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>GTM — Gemini Task Management</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <meta name="color-scheme" content="light dark">
+  <title>Call Task AI</title>
+  <script>
+    try {
+      if (localStorage.getItem("gtm-theme") === "dark") {
+        document.documentElement.classList.add("dark");
+        document.querySelector('meta[name="color-scheme"]').setAttribute("content", "dark");
+      }
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="/static/css/app.css?v=20261024h">
 </head>
 <body data-view="{{ view }}" data-project-id="{{ project_id }}">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+      <symbol id="i-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+      <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/><path d="M5 3v4M3 5h4M19 17v4M17 19h4"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+      <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+      <symbol id="i-logo" viewBox="0 0 108 108"><path fill="currentColor" fill-rule="evenodd" d="M39 30 H66 A11 11 0 0 1 77 41 V53 A11 11 0 0 1 66 64 H53 L40 76 V64 H39 A11 11 0 0 1 28 53 V41 A11 11 0 0 1 39 30 Z M52 37 C53 44.5 56.5 48 64 49 C56.5 50 53 53.5 52 61 C51 53.5 47.5 50 40 49 C47.5 48 51 44.5 52 37 Z"/></symbol>
+      <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+    </defs>
+  </svg>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark">G</span>
-        <span class="brand-name">GTM</span>
+        <span class="brand-mark"><svg class="icon brand-logo"><use href="#i-logo"></use></svg></span>
+        <span class="brand-name">Call Task AI</span>
       </div>
       <nav class="nav">
-        <a class="nav-item {% if view == 'today' %}is-active{% endif %}" href="/today">
-          <span class="nav-icon">◉</span><span>Today</span><span class="nav-count" data-count="today">{{ counts.today }}</span>
+        <a class="nav-item {% if view == 'all' %}is-active{% endif %}" href="/all">
+          <svg class="icon nav-icon"><use href="#i-layers"></use></svg><span>All tasks</span><span class="nav-count" data-count="all">{{ counts.all }}</span>
         </a>
-        <a class="nav-item {% if view == 'inbox' %}is-active{% endif %}" href="/inbox">
-          <span class="nav-icon">▣</span><span>Inbox</span><span class="nav-count" data-count="inbox">{{ counts.inbox }}</span>
+        <a class="nav-item {% if view == 'backlog' %}is-active{% endif %}" href="/backlog">
+          <svg class="icon nav-icon"><use href="#i-inbox"></use></svg><span>Backlog</span><span class="nav-count" data-count="backlog">{{ counts.backlog }}</span>
         </a>
-        <a class="nav-item {% if view == 'upcoming' %}is-active{% endif %}" href="/upcoming">
-          <span class="nav-icon">◌</span><span>Upcoming</span><span class="nav-count" data-count="upcoming">{{ counts.upcoming }}</span>
+        <a class="nav-item {% if view == 'research' %}is-active{% endif %}" href="/research">
+          <svg class="icon nav-icon"><use href="#i-search"></use></svg><span>Research</span><span class="nav-count" data-count="research">{{ counts.research }}</span>
         </a>
-        <a class="nav-item {% if view == 'anytime' %}is-active{% endif %}" href="/anytime">
-          <span class="nav-icon">◇</span><span>Anytime</span>
+        <a class="nav-item {% if view == 'sprint' %}is-active{% endif %}" href="/sprint">
+          <svg class="icon nav-icon"><use href="#i-wheel"></use></svg><span>Sprint</span><span class="nav-count" data-count="sprint">{{ counts.sprint }}</span>
         </a>
-        <a class="nav-item {% if view == 'waiting' %}is-active{% endif %}" href="/waiting">
-          <span class="nav-icon">◷</span><span>Waiting</span><span class="nav-count" data-count="waiting">{{ counts.waiting }}</span>
+        <a class="nav-item {% if view == 'review' %}is-active{% endif %}" href="/review">
+          <svg class="icon nav-icon"><use href="#i-clock"></use></svg><span>Review</span><span class="nav-count" data-count="review">{{ counts.review }}</span>
         </a>
         <a class="nav-item {% if view == 'done' %}is-active{% endif %}" href="/done">
-          <span class="nav-icon">✓</span><span>Done</span><span class="nav-count" data-count="done">{{ counts.done }}</span>
+          <svg class="icon nav-icon"><use href="#i-check"></use></svg><span>Done</span><span class="nav-count" data-count="done">{{ counts.done }}</span>
         </a>
       </nav>
 
       <div class="nav-section">
-        <div class="nav-section-head"><span>Projects</span><button class="icon-btn" id="new-project-btn" title="New project">+</button></div>
+        <div class="nav-section-head">
+          <span>Projects</span>
+          <button class="icon-btn" id="new-project-btn" title="New project" aria-label="New project"><svg class="icon icon-sm"><use href="#i-plus"></use></svg></button>
+        </div>
         <div id="project-list">
           {% for p in projects %}
           <a class="nav-item nav-project {% if project_id == p.id %}is-active{% endif %}" href="/projects/{{ p.id }}">
@@ -51,7 +83,7 @@
 
       <div class="sidebar-foot">
         <a class="nav-item {% if view == 'settings' %}is-active{% endif %}" href="/settings">
-          <span class="nav-icon">⚙</span><span>Settings &amp; system</span>
+          <svg class="icon nav-icon"><use href="#i-settings"></use></svg><span>Settings &amp; system</span>
         </a>
         <div class="sidebar-note">Local-first · private tailnet</div>
       </div>
@@ -66,19 +98,24 @@
         </div>
         <div class="top-actions">
           <div class="search-wrap">
+            <svg class="icon search-icon"><use href="#i-search"></use></svg>
             <input id="search-input" type="search" placeholder="Search tasks" autocomplete="off" aria-label="Search tasks">
             <kbd>/</kbd>
           </div>
-          <button class="btn btn-quiet" id="focus-command">Ask Gemini <kbd>⌘K</kbd></button>
-          <button class="btn btn-primary" id="quick-add-btn">New task</button>
+          <button class="btn btn-quiet" id="focus-command"><svg class="icon"><use href="#i-sparkles"></use></svg>Ask AI<kbd>⌘K</kbd></button>
+          <button class="btn btn-primary" id="quick-add-btn"><svg class="icon"><use href="#i-plus"></use></svg>New task</button>
+          <button class="icon-btn theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
+            <svg class="icon icon-sun"><use href="#i-sun"></use></svg>
+            <svg class="icon icon-moon"><use href="#i-moon"></use></svg>
+          </button>
         </div>
       </header>
 
       <section class="command-bar" id="command-area">
         <form id="command-form">
-          <span class="spark">✦</span>
-          <input id="command-input" type="text" placeholder="Tell Gemini what to change… e.g. “Move the report to Friday and make it urgent”" autocomplete="off">
-          <button class="btn btn-dark" type="submit">Interpret</button>
+          <span class="spark"><svg class="icon"><use href="#i-sparkles"></use></svg></span>
+          <input id="command-input" type="text" placeholder="Tell AI what to change… e.g. “Move the report to Friday and make it urgent”" autocomplete="off">
+          <button class="btn btn-primary" type="submit">Interpret</button>
         </form>
         <div class="command-status" id="command-status" hidden></div>
       </section>
@@ -91,9 +128,8 @@
               <span class="pill" id="task-count">0</span>
             </div>
             <div class="view-tabs" id="view-tabs">
-              <button class="tab-btn is-active" data-quick-view="today">Today</button>
-              <button class="tab-btn" data-quick-view="board">Board</button>
-              <button class="tab-btn" data-quick-view="all">All</button>
+              <button class="tab-btn {% if view != 'all' and view != 'projects' %}is-active{% endif %}" data-quick-view="list">List</button>
+              <button class="tab-btn {% if view == 'all' or view == 'projects' %}is-active{% endif %}" data-quick-view="board">Board</button>
             </div>
           </div>
           <div id="task-container" class="task-container">
@@ -113,7 +149,7 @@
           </div>
           <div class="context-card context-tip">
             <p class="eyebrow">Tip</p>
-            <p>Press <kbd>c</kbd> to capture, <kbd>/</kbd> to search, <kbd>⌘K</kbd> for Gemini.</p>
+            <p>Press <kbd>c</kbd> to capture, <kbd>/</kbd> to search, <kbd>⌘K</kbd> for AI.</p>
           </div>
         </aside>
       </section>
@@ -159,14 +195,17 @@
   <aside class="drawer" id="drawer" hidden aria-label="Task detail">
     <div class="drawer-head">
       <div><p class="eyebrow" id="detail-eyebrow">Task</p><h2 id="detail-title">Task</h2></div>
-      <button class="icon-btn" id="drawer-close" aria-label="Close">✕</button>
+      <button class="icon-btn" id="drawer-close" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
     </div>
     <div class="drawer-body" id="drawer-body"></div>
   </aside>
 
   <div class="modal-backdrop" id="proposal-backdrop" hidden></div>
   <section class="modal" id="proposal-modal" hidden aria-label="AI proposal">
-    <div class="modal-head"><div><p class="eyebrow">Gemini proposal</p><h2 id="proposal-title">Review changes</h2></div><button class="icon-btn" id="proposal-close" aria-label="Close">✕</button></div>
+    <div class="modal-head">
+      <div><p class="eyebrow">AI proposal</p><h2 id="proposal-title">Review changes</h2></div>
+      <button class="icon-btn" id="proposal-close" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
+    </div>
     <p class="proposal-message" id="proposal-message"></p>
     <div class="proposal-list" id="proposal-list"></div>
     <div class="modal-actions">
@@ -177,6 +216,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v=20261024h"></script>
 </body>
 </html>

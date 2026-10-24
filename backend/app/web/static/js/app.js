@@ -1,7 +1,8 @@
 (function () {
   "use strict";
+  var initialView = document.body.getAttribute("data-view") || "today";
   var state = {
-    view: document.body.getAttribute("data-view") || "today",
+    view: initialView,
     projectId: document.body.getAttribute("data-project-id") || "",
     tasks: [],
     projects: [],
@@ -9,8 +10,10 @@
     selected: null,
     proposal: null,
     pollTimer: null,
-    mode: "list",
-    query: ""
+    mode: initialView === "all" || initialView === "projects" ? "board" : "list",
+    query: "",
+    dragTaskId: null,
+    suppressClick: false
   };
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
@@ -42,7 +45,7 @@
   function toast(message, isError) {
     var el = $("#toast");
     el.textContent = message;
-    el.style.background = isError ? "#b3261e" : "#1d1d1f";
+    el.classList.toggle("is-error", !!isError);
     el.classList.add("is-on");
     clearTimeout(el._timer);
     el._timer = setTimeout(function () { el.classList.remove("is-on"); }, 2800);
@@ -54,7 +57,8 @@
     return ({ urgent: "Urgent", high: "High", medium: "Medium", low: "Low", none: "No priority" })[p] || "No priority";
   }
   function statusLabel(s) {
-    return ({ inbox: "Inbox", todo: "To do", in_progress: "In progress", waiting: "Waiting", done: "Done", cancelled: "Cancelled" })[s] || s;
+    return ({ backlog: "Backlog", research: "Research", sprint: "Sprint", review: "Review", done: "Done", cancelled: "Cancelled",
+      inbox: "Backlog", todo: "Backlog", in_progress: "Sprint", waiting: "Review" })[s] || s;
   }
   function dateOnly(value) {
     if (!value) return "";
@@ -96,7 +100,7 @@
     return '<div class="task-row' + (done ? " is-done" : "") + '" data-task-id="' + esc(task.id) + '">' +
       '<button class="task-check' + (done ? " is-done" : "") + '" data-action="toggle" data-task-id="' + esc(task.id) + '" aria-label="' + (done ? "Reopen" : "Complete") + '"></button>' +
       '<div class="task-main"><div class="task-title">' + esc(task.title) + '</div><div class="task-meta">' + meta.join("") + "</div></div>" +
-      '<div class="task-side"><button class="row-action" data-action="open" data-task-id="' + esc(task.id) + '" aria-label="Open task">›</button></div>' +
+      '<div class="task-side"><button class="row-action" data-action="open" data-task-id="' + esc(task.id) + '" aria-label="Open task"><svg class="icon icon-sm"><use href="#i-chevron-right"></use></svg></button></div>' +
       "</div>";
   }
   function groupTasks(tasks) {
@@ -117,7 +121,7 @@
   function renderList() {
     var container = $("#task-container");
     if (!state.tasks.length) {
-      container.innerHTML = '<div class="empty-state"><strong>All clear.</strong>Capture a thought or ask Gemini to add something.</div>';
+      container.innerHTML = '<div class="empty-state"><strong>All clear.</strong>Capture a thought or ask AI to add something.<div class="empty-actions"><button class="btn btn-quiet btn-small" id="inline-add"><svg class="icon icon-sm"><use href="#i-plus"></use></svg>Add a task</button></div></div>';
       $("#task-count").textContent = "0";
       return;
     }
@@ -131,25 +135,26 @@
       items.forEach(function (task) { html += taskRow(task); });
       html += "</div>";
     });
-    html += '<button class="add-row" id="inline-add">+ Add a task</button>';
+    html += '<button class="add-row" id="inline-add"><svg class="icon icon-sm"><use href="#i-plus"></use></svg>Add a task</button>';
     container.innerHTML = html;
   }
   function renderBoard() {
     var cols = [
-      { key: "todo", label: "To do" },
-      { key: "in_progress", label: "In progress" },
-      { key: "waiting", label: "Waiting" },
-      { key: "done", label: "Done" }
+      { key: "backlog", label: "Backlog", statuses: ["backlog", "inbox", "todo"] },
+      { key: "research", label: "Research", statuses: ["research"] },
+      { key: "sprint", label: "Sprint", statuses: ["sprint", "in_progress"] },
+      { key: "review", label: "Review", statuses: ["review", "waiting"] },
+      { key: "done", label: "Done", statuses: ["done"] }
     ];
     var html = '<div class="board">';
     cols.forEach(function (col) {
       var items = state.tasks.filter(function (t) {
-        return col.key === "todo" ? (t.status === "todo" || t.status === "inbox") : t.status === col.key;
+        return col.statuses.indexOf(t.status) !== -1;
       });
-      html += '<div class="board-col"><div class="board-col-head"><span>' + col.label + "</span><span>" + items.length + "</span></div>";
+      html += '<div class="board-col" data-phase="' + col.key + '"><div class="board-col-head"><span>' + col.label + "</span><span>" + items.length + "</span></div>";
       if (!items.length) html += '<div class="board-empty">No cards yet</div>';
       items.forEach(function (t) {
-        html += '<button class="board-card" data-task-id="' + esc(t.id) + '"><div class="task-title">' + esc(t.title) + '</div><div class="task-meta"><span class="' + priorityClass(t.priority) + '">' + priorityLabel(t.priority) + '</span></div></button>';
+        html += '<button class="board-card" draggable="true" title="Drag to another phase" data-task-id="' + esc(t.id) + '"><div class="task-title">' + esc(t.title) + '</div><div class="task-meta"><span class="' + priorityClass(t.priority) + '">' + priorityLabel(t.priority) + '</span></div></button>';
       });
       html += "</div>";
     });
@@ -181,13 +186,13 @@
     }).join("");
   }
   function updateHeader() {
-    var titles = { today: "My day", inbox: "Inbox", upcoming: "Upcoming", anytime: "Anytime", waiting: "Waiting", done: "Done", settings: "Settings & system", projects: "Project" };
+    var titles = { all: "All tasks", backlog: "Backlog", research: "Research", sprint: "Sprint", review: "Review", done: "Done", settings: "Settings & system", projects: "Project" };
     var subs = {
-      today: "Overdue and due today, plus anything scheduled.",
-      inbox: "Untriaged capture. Move it when it has a home.",
-      upcoming: "The next seven days.",
-      anytime: "Open work with no date.",
-      waiting: "Blocked on someone or something.",
+      all: "Every task — open and completed — in one list.",
+      backlog: "Ideas and untriaged work waiting to be picked up.",
+      research: "Being investigated before it is committed.",
+      sprint: "Work in progress this cycle.",
+      review: "Waiting on review or on someone else.",
       done: "Completed in the last 30 days.",
       settings: "Local engine, paired devices, and maintenance.",
       projects: "Active work for this project."
@@ -195,7 +200,7 @@
     var project = state.projects.filter(function (p) { return p.id === state.projectId; })[0];
     $("#view-title").textContent = project ? project.name : (titles[state.view] || "Tasks");
     $("#view-subtitle").textContent = subs[state.view] || "";
-    $("#eyebrow").textContent = state.view === "settings" ? "System" : (project ? "Project" : "Today");
+    $("#eyebrow").textContent = state.view === "settings" ? "System" : project ? "Project" : state.view.charAt(0).toUpperCase() + state.view.slice(1);
     $("#context-date").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   }
   function loadTasks() {
@@ -225,10 +230,10 @@
     return api("/api/health").then(function (health) {
       var ai = health.ai || {};
       var db = health.database || {};
-      var model = ai.opencode_configured ? ai.opencode_model : ai.agy_model;
+      var model = ai.configured ? ai.model : "";
       $("#mini-health").innerHTML =
         '<div class="health-line"><span class="health-dot ' + (db.ok ? "" : "bad") + '"></span>DB ' + (db.ok ? "online" : "offline") + '</div>' +
-        '<div class="health-line"><span class="health-dot ' + (ai.agy_installed || ai.opencode_configured ? "" : "warn") + '"></span>' + esc(model || "No AI provider") + '</div>';
+        '<div class="health-line"><span class="health-dot ' + (ai.configured ? "" : "warn") + '"></span>' + esc(model || "AI not configured") + '</div>';
     }).catch(function () {});
   }
   function refresh() {
@@ -277,7 +282,7 @@
       '<div class="form-grid">' +
       '<label>Title<input id="d-title" type="text" value="' + esc(t.title) + '"></label>' +
       '<label>Notes<textarea id="d-notes">' + esc(t.description || "") + "</textarea></label>" +
-      '<label>Status<select id="d-status">' + ["inbox", "todo", "in_progress", "waiting", "done", "cancelled"].map(function (s) { return '<option value="' + s + '"' + (s === t.status ? " selected" : "") + ">" + statusLabel(s) + "</option>"; }).join("") + "</select></label>" +
+      '<label>Status<select id="d-status">' + ["backlog", "research", "sprint", "review", "done", "cancelled"].map(function (s) { return '<option value="' + s + '"' + (s === t.status ? " selected" : "") + ">" + statusLabel(s) + "</option>"; }).join("") + "</select></label>" +
       '<label>Priority<select id="d-priority">' + ["none", "low", "medium", "high", "urgent"].map(function (p) { return '<option value="' + p + '"' + (p === t.priority ? " selected" : "") + ">" + priorityLabel(p) + "</option>"; }).join("") + "</select></label>" +
       '<label>Project<select id="d-project"><option value="">No project</option>' + projects + "</select></label>" +
       '<label>Due<input id="d-due" type="datetime-local" value="' + esc(toLocalInput(t.due_at)) + '"></label>' +
@@ -286,7 +291,7 @@
       "</div>" +
       '<div class="detail-actions"><button class="btn btn-primary" id="d-save">Save</button>' +
       '<button class="btn btn-quiet" id="d-toggle">' + (t.status === "done" ? "Reopen" : "Complete") + "</button>" +
-      '<button class="btn btn-danger" id="d-archive">Archive</button></div>' +
+      '<button class="btn btn-danger-quiet" id="d-archive">Archive</button></div>' +
       '<p class="eyebrow">Checklist</p><div class="subtasks">' + subtasks + "</div>" +
       '<p class="eyebrow" style="margin-top:18px">Activity</p><div class="events">' + (events || '<div class="muted">No activity yet.</div>') + "</div>";
     $("#d-save").addEventListener("click", saveDetail);
@@ -343,10 +348,8 @@
     var optionHtml = state.projects.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + "</option>"; }).join("");
     var el = document.createElement("div");
     el.id = "quick-add-layer";
-    el.className = "modal-backdrop";
-    el.style.display = "grid";
-    el.style.placeItems = "center";
-    el.innerHTML = '<div class="modal" style="position:relative;top:auto;left:auto;transform:none;width:min(440px,92vw);"><div class="modal-head"><div><p class="eyebrow">Capture</p><h2>New task</h2></div><button class="icon-btn" id="qa-close">✕</button></div><div class="form-grid"><label>Title<input id="qa-title" type="text" placeholder="What needs doing?"></label><label>Project<select id="qa-project"><option value="">No project</option>' + optionHtml + '</select></label><label>Priority<select id="qa-priority"><option value="none">No priority</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Due<input id="qa-due" type="datetime-local"></label></div><div class="modal-actions" style="margin-top:14px"><button class="btn btn-primary" id="qa-save">Add task</button><button class="btn btn-quiet" id="qa-cancel">Cancel</button></div></div>';
+    el.className = "modal-backdrop quick-add-layer";
+    el.innerHTML = '<div class="modal"><div class="modal-head"><div><p class="eyebrow">Capture</p><h2>New task</h2></div><button class="icon-btn" id="qa-close" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button></div><div class="form-grid"><label>Title<input id="qa-title" type="text" placeholder="What needs doing?"></label><label>Project<select id="qa-project"><option value="">No project</option>' + optionHtml + '</select></label><label>Priority<select id="qa-priority"><option value="none">No priority</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Due<input id="qa-due" type="datetime-local"></label></div><div class="modal-actions"><button class="btn btn-primary" id="qa-save">Add task</button><button class="btn btn-quiet" id="qa-cancel">Cancel</button></div></div>';
     document.body.appendChild(el);
     function close() { el.remove(); }
     $("#qa-close").addEventListener("click", close);
@@ -379,8 +382,8 @@
     var input = $("#command-input");
     var text = input.value.trim();
     if (!text) return;
-    setCommandStatus("Gemini is reading the request…");
-    api("/api/ai/interpret", { method: "POST", body: { text: text, view: state.view } }).then(function (data) {
+    setCommandStatus("AI is reading the request…");
+    api("/api/ai/interpret", { method: "POST", body: { text: text, view: state.view, project_id: state.projectId || null } }).then(function (data) {
       pollRun(data.run_id);
     }).catch(function (err) { setCommandStatus(err.message, true); });
   }
@@ -390,13 +393,13 @@
     function tick() {
       api("/api/ai/runs/" + runId).then(function (run) {
         if (run.status === "queued" || run.status === "running") {
-          if (Date.now() - started > 130000) { setCommandStatus("Gemini is taking too long. Try again.", true); return; }
-          setCommandStatus("Gemini is thinking… " + Math.round((Date.now() - started) / 1000) + "s");
+          if (Date.now() - started > 130000) { setCommandStatus("AI is taking too long. Try again.", true); return; }
+          setCommandStatus("AI is thinking… " + Math.round((Date.now() - started) / 1000) + "s");
           state.pollTimer = setTimeout(tick, 1200);
           return;
         }
         if (run.status === "failed") {
-          setCommandStatus(run.error_message || "Gemini could not interpret that.", true);
+          setCommandStatus(run.error_message || "AI could not interpret that.", true);
           return;
         }
         if (run.proposal) {
@@ -411,18 +414,74 @@
     tick();
   }
   function inputClear() { $("#command-input").value = ""; }
+  var PROPOSAL_LABELS = {
+    status: "Status", priority: "Priority", due_at: "Due", due_all_day: "Due type",
+    estimate_minutes: "Estimate", project_id: "Project", tags: "Tags",
+    description: "Notes", parent_ref: "Parent"
+  };
+  function humanValue(key, value) {
+    if (value === null || value === undefined || value === "") return "—";
+    if (key === "due_at") {
+      var d = new Date(value);
+      return isNaN(d) ? String(value) : d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+    if (key === "project_id") {
+      var project = state.projects.filter(function (p) { return p.id === value; })[0];
+      return project ? project.name : "Selected project";
+    }
+    if (key === "priority") return priorityLabel(value);
+    if (key === "status") return statusLabel(value);
+    if (key === "estimate_minutes") return value + " min";
+    if (key === "tags") return Array.isArray(value) ? value.join(", ") : String(value);
+    if (key === "description") return String(value).slice(0, 160);
+    if (key === "due_all_day") return value ? "All day" : "Timed";
+    if (key === "parent_ref") return "Subtask of a new task";
+    return String(value);
+  }
+  function proposalFieldRows(fields) {
+    return Object.keys(fields || {}).filter(function (key) {
+      return PROPOSAL_LABELS[key] && fields[key] !== null && fields[key] !== "" && fields[key] !== undefined;
+    }).map(function (key) {
+      return '<div class="proposal-field"><dt>' + esc(PROPOSAL_LABELS[key]) + '</dt><dd>' + esc(humanValue(key, fields[key])) + '</dd></div>';
+    }).join("");
+  }
+  function proposalChangeRows(changes) {
+    return Object.keys(changes || {}).map(function (key) {
+      var change = changes[key] || {};
+      var label = PROPOSAL_LABELS[key] || key.replace(/_/g, " ");
+      return '<div class="proposal-field"><dt>' + esc(label) + '</dt><dd><s>' + esc(humanValue(key, change.from)) +
+        '</s> <span class="arrow">→</span> ' + esc(humanValue(key, change.to)) + '</dd></div>';
+    }).join("");
+  }
+  function renderProposalItems(items) {
+    if (!items.length) return '<div class="proposal-item"><strong>No write actions</strong><span>The assistant returned information only.</span></div>';
+    return items.map(function (item) {
+      if (item.op === "create") {
+        var rows = proposalFieldRows(item.fields);
+        return '<div class="proposal-item"><strong>Create · ' + esc(item.title || "") + '</strong>' +
+          (rows ? '<div class="proposal-fields">' + rows + '</div>' : "") + "</div>";
+      }
+      if (item.op === "update") {
+        var changed = proposalChangeRows(item.changes);
+        return '<div class="proposal-item"><strong>Update · ' + esc(item.title || "") + '</strong>' +
+          (changed ? '<div class="proposal-fields">' + changed + '</div>' : "") + "</div>";
+      }
+      if (item.op === "archive") return '<div class="proposal-item"><strong>Archive · ' + esc(item.title || "") + '</strong><span>Task will be archived, not deleted.</span></div>';
+      if (item.op === "complete") return '<div class="proposal-item"><strong>Complete · ' + esc(item.title || "") + "</strong></div>";
+      if (item.op === "query") {
+        var tasks = item.tasks || [];
+        return '<div class="proposal-item"><strong>Query · ' + tasks.length + ' tasks</strong>' +
+          tasks.slice(0, 5).map(function (t) { return "<span>" + esc((t.short_key || "") + " · " + (t.title || "")) + "</span>"; }).join("") +
+          (tasks.length > 5 ? '<span>…and ' + (tasks.length - 5) + ' more</span>' : "") + "</div>";
+      }
+      return '<div class="proposal-item"><strong>' + esc((item.op || "change").replace(/_/g, " ")) + "</strong></div>";
+    }).join("");
+  }
   function showProposal(proposal) {
     state.proposal = proposal;
     $("#proposal-title").textContent = proposal.intent ? proposal.intent.replace(/_/g, " ") : "Review changes";
     $("#proposal-message").textContent = proposal.assistant_message || "Review the proposed changes.";
-    var items = proposal.preview || [];
-    $("#proposal-list").innerHTML = items.map(function (item) {
-      if (item.op === "create") return '<div class="proposal-item"><strong>Create · ' + esc(item.title || "") + '</strong><span>' + esc(JSON.stringify(item.fields || {})) + "</span></div>";
-      if (item.op === "update") return '<div class="proposal-item"><strong>Update · ' + esc(item.title || "") + '</strong><span>' + esc(JSON.stringify(item.changes || {})) + "</span></div>";
-      if (item.op === "archive") return '<div class="proposal-item"><strong>Archive · ' + esc(item.title || "") + '</strong><span>Task will be archived, not deleted.</span></div>';
-      if (item.op === "complete") return '<div class="proposal-item"><strong>Complete · ' + esc(item.title || "") + "</strong></div>";
-      return '<div class="proposal-item"><strong>' + esc(item.op || "Change") + "</strong><span>" + esc(JSON.stringify(item)) + "</span></div>";
-    }).join("") || '<div class="proposal-item"><strong>No write actions</strong><span>The assistant returned information only.</span></div>';
+    $("#proposal-list").innerHTML = renderProposalItems(proposal.preview || []);
     $("#proposal-backdrop").hidden = false;
     $("#proposal-modal").hidden = false;
   }
@@ -460,16 +519,15 @@
         ["App", health.version],
         ["Database", health.database.ok ? "OK" : "Error"],
         ["AI provider", ai.provider],
-        ["agy", ai.agy_installed ? ai.agy_model : "not found"],
-        ["OpenCode", ai.opencode_configured ? ai.opencode_model : "not configured"],
-        ["Gemini", ai.gemini_configured ? "configured" : "not configured"],
+        ["Model", ai.model || "not configured"],
+        ["Endpoint", ai.configured ? "connected" : "not configured"],
         ["Voice", health.voice.enabled ? health.voice.provider + " · " + health.voice.input : "disabled"],
         ["Pairing", health.pairing.enabled ? "enabled" : "disabled"]
       ];
       $("#health-details").innerHTML = lines.map(function (row) {
         return '<div class="kv"><span>' + esc(row[0]) + "</span><strong>" + esc(row[1]) + "</strong></div>";
       }).join("");
-      $("#mini-health").innerHTML = '<div class="health-line"><span class="health-dot ' + (health.database.ok ? "" : "bad") + '"></span>DB ' + (health.database.ok ? "online" : "offline") + '</div><div class="health-line"><span class="health-dot ' + (ai.agy_installed || ai.opencode_configured ? "" : "warn") + '"></span>' + esc(ai.opencode_configured ? ai.opencode_model : ai.agy_model) + "</div>";
+      $("#mini-health").innerHTML = '<div class="health-line"><span class="health-dot ' + (health.database.ok ? "" : "bad") + '"></span>DB ' + (health.database.ok ? "online" : "offline") + '</div><div class="health-line"><span class="health-dot ' + (ai.configured ? "" : "warn") + '"></span>' + esc(ai.configured ? ai.model : "AI not configured") + "</div>";
     }).catch(function () {});
     api("/api/auth/devices").then(renderDevices).catch(function () {});
   }
@@ -508,6 +566,54 @@
   }
 
   /* Events */
+  function moveTaskToPhase(taskId, phase) {
+    if (!taskId || !phase) return;
+    var task = state.tasks.filter(function (t) { return t.id === taskId; })[0];
+    if (!task || task.status === phase) return;
+    api("/api/tasks/" + taskId, { method: "PATCH", body: { status: phase, version: task.version } })
+      .then(function () { toast("Moved to " + statusLabel(phase) + "."); refresh(); })
+      .catch(function (err) { toast(err.message, true); refresh(); });
+  }
+
+  var boardEl = $("#task-container");
+  boardEl.addEventListener("dragstart", function (ev) {
+    var card = ev.target.closest(".board-card");
+    if (!card) return;
+    state.dragTaskId = card.getAttribute("data-task-id");
+    state.suppressClick = true;
+    card.classList.add("is-dragging");
+    ev.dataTransfer.effectAllowed = "move";
+    ev.dataTransfer.setData("text/plain", state.dragTaskId);
+  });
+  boardEl.addEventListener("dragend", function () {
+    state.dragTaskId = null;
+    $$(".board-card.is-dragging").forEach(function (el) { el.classList.remove("is-dragging"); });
+    $$(".board-col.is-drop-target").forEach(function (el) { el.classList.remove("is-drop-target"); });
+    setTimeout(function () { state.suppressClick = false; }, 60);
+  });
+  boardEl.addEventListener("dragover", function (ev) {
+    var col = ev.target.closest(".board-col");
+    if (!col || !state.dragTaskId) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "move";
+    $$(".board-col.is-drop-target").forEach(function (el) { if (el !== col) el.classList.remove("is-drop-target"); });
+    col.classList.add("is-drop-target");
+  });
+  boardEl.addEventListener("dragleave", function (ev) {
+    var col = ev.target.closest(".board-col");
+    if (!col) return;
+    if (!col.contains(ev.relatedTarget)) col.classList.remove("is-drop-target");
+  });
+  boardEl.addEventListener("drop", function (ev) {
+    var col = ev.target.closest(".board-col");
+    if (!col) return;
+    ev.preventDefault();
+    var id = state.dragTaskId || ev.dataTransfer.getData("text/plain");
+    var phase = col.getAttribute("data-phase");
+    col.classList.remove("is-drop-target");
+    moveTaskToPhase(id, phase);
+  });
+
   document.addEventListener("click", function (ev) {
     var toggle = ev.target.closest("[data-action='toggle']");
     if (toggle) {
@@ -518,9 +624,10 @@
       api("/api/tasks/" + id + (done ? "/reopen" : "/complete"), { method: "POST" }).then(function () { refresh(); }).catch(function (err) { toast(err.message, true); });
       return;
     }
+    if (state.suppressClick) { state.suppressClick = false; return; }
     var row = ev.target.closest(".task-row, .board-card");
     if (row && row.getAttribute("data-task-id")) { openDetail(row.getAttribute("data-task-id")); return; }
-    if (ev.target.id === "inline-add" || ev.target.id === "quick-add-btn" || ev.target.id === "add-btn") { openQuickAdd(); }
+    if (ev.target.closest("#inline-add") || ev.target.closest("#quick-add-btn") || ev.target.closest("#add-btn")) { openQuickAdd(); }
   });
   $("#drawer-close").addEventListener("click", closeDetail);
   $("#drawer-backdrop").addEventListener("click", closeDetail);
@@ -534,18 +641,61 @@
   $("#pairing-code-btn").addEventListener("click", generateCode);
   $("#backup-btn").addEventListener("click", backup);
   $("#rebuild-btn").addEventListener("click", rebuild);
-  $("#new-project-btn").addEventListener("click", function () {
-    var name = window.prompt("Project name");
-    if (!name) return;
-    api("/api/projects", { method: "POST", body: { name: name } }).then(function () { toast("Project created"); refresh(); }).catch(function (err) { toast(err.message, true); });
+  function openProjectDialog() {
+    var layer = document.createElement("div");
+    layer.id = "project-dialog-layer";
+    layer.className = "modal-backdrop quick-add-layer";
+    layer.innerHTML =
+      '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="pd-title">' +
+        '<div class="modal-head"><div><p class="eyebrow">Projects</p><h2 id="pd-title">New project</h2></div>' +
+        '<button class="icon-btn" id="pd-close" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button></div>' +
+        '<div class="form-grid">' +
+          '<label>Name<input id="pd-name" type="text" placeholder="e.g. Website relaunch" maxlength="200" autocomplete="off"></label>' +
+          '<label>Color<input id="pd-color" type="color" value="#64748b"></label>' +
+        '</div>' +
+        '<p class="form-error" id="pd-error" hidden></p>' +
+        '<div class="modal-actions"><button class="btn btn-quiet" id="pd-cancel">Cancel</button><button class="btn btn-primary" id="pd-create">Create project</button></div>' +
+      '</div>';
+    document.body.appendChild(layer);
+    var nameInput = $("#pd-name");
+    var errorEl = $("#pd-error");
+    function close() { layer.remove(); }
+    function showError(message) { errorEl.hidden = false; errorEl.textContent = message; }
+    function submit() {
+      var name = nameInput.value.trim();
+      if (!name) { showError("Give the project a name."); nameInput.focus(); return; }
+      api("/api/projects", { method: "POST", body: { name: name, color: $("#pd-color").value } })
+        .then(function () { close(); toast("Project created"); refresh(); })
+        .catch(function (err) { showError(err.message); });
+    }
+    $("#pd-close").addEventListener("click", close);
+    $("#pd-cancel").addEventListener("click", close);
+    $("#pd-create").addEventListener("click", submit);
+    nameInput.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") { ev.preventDefault(); submit(); }
+    });
+    layer.addEventListener("mousedown", function (ev) { if (ev.target === layer) close(); });
+    nameInput.focus();
+  }
+  $("#new-project-btn").addEventListener("click", openProjectDialog);
+  $$(".nav-item.is-active").forEach(function (el) { el.setAttribute("aria-current", "page"); });
+  $("#theme-toggle").addEventListener("click", function () {
+    var isDark = document.documentElement.classList.toggle("dark");
+    try { localStorage.setItem("gtm-theme", isDark ? "dark" : "light"); } catch (e) {}
+    var meta = document.querySelector('meta[name="color-scheme"]');
+    if (meta) meta.setAttribute("content", isDark ? "dark" : "light");
   });
   $$("#view-tabs .tab-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       $$("#view-tabs .tab-btn").forEach(function (b) { b.classList.toggle("is-active", b === btn); });
       var view = btn.getAttribute("data-quick-view");
-      if (view === "board") { state.mode = "board"; loadTasks(); }
-      else if (view === "all") { state.mode = "list"; window.location.href = "/anytime"; }
-      else { state.mode = "list"; window.location.href = "/today"; }
+      if (view === "board") {
+        // Projects keep their own board; global stage views jump to the full board.
+        if (state.view !== "all" && state.view !== "projects") { window.location.href = "/all"; return; }
+        state.mode = "board"; loadTasks();
+      } else if (view === "list") {
+        state.mode = "list"; loadTasks();
+      }
     });
   });
   $("#search-input").addEventListener("keydown", function (ev) {
@@ -568,7 +718,12 @@
     if (ev.key === "c") { ev.preventDefault(); openQuickAdd(); }
     if (ev.key === "/") { ev.preventDefault(); $("#search-input").focus(); }
     if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "k") { ev.preventDefault(); $("#command-input").focus(); }
-    if (ev.key === "Escape") { closeDetail(); closeProposal(); }
+    if (ev.key === "Escape") {
+      closeDetail();
+      closeProposal();
+      var projectDialog = $("#project-dialog-layer");
+      if (projectDialog) projectDialog.remove();
+    }
   });
 
   updateHeader();
