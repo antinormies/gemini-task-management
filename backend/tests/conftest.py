@@ -22,11 +22,9 @@ def settings(tmp_path: Path) -> Settings:
         secret_key="test-secret-key-not-for-production",
         public_origin="http://127.0.0.1:8765",
         ai_enabled=True,
-        ai_provider="opencode",
-        opencode_api_key="test-opencode-key",
-        opencode_model="deepseek-v4.1-flash",
-        voice_provider="opencode",
-        gemini_api_key="",
+        ai_base_url="http://127.0.0.1:8080/internal/ai/complete",
+        ai_api_key="test-self-key",
+        ai_model="deepseek-v4.1-flash",
     )
 
 

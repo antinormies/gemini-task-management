@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 SCHEMA_PATH = Path(__file__).with_name("schema.json")
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
 
-Status = Literal["inbox", "todo", "in_progress", "waiting", "done", "cancelled"]
+Status = Literal["backlog", "research", "sprint", "review", "done", "cancelled"]
 Priority = Literal["none", "low", "medium", "high", "urgent"]
 
 
@@ -22,7 +22,7 @@ class CreateTaskAction(Strict):
     client_ref: str = Field(min_length=1, max_length=40)
     title: str = Field(min_length=1, max_length=300)
     description: str | None = Field(default=None, max_length=5000)
-    status: Literal["inbox", "todo"] = "inbox"
+    status: Literal["backlog", "research", "sprint", "review"] = "backlog"
     priority: Priority = "none"
     due_at: str | None = None
     due_all_day: bool = False
@@ -150,8 +150,69 @@ class Interpretation(Strict):
         return [a.model_dump(mode="json") for a in self.actions]
 
 
+_ACTION_MODELS = {
+    "create_task": CreateTaskAction,
+    "update_task": UpdateTaskAction,
+    "complete_task": CompleteTaskAction,
+    "archive_task": ArchiveTaskAction,
+    "query_tasks": QueryTasksAction,
+    "plan_day": PlanDayAction,
+    "create_subtasks": CreateSubtasksAction,
+    "summarize": SummarizeAction,
+}
+
+
+def _keep(obj: dict, model) -> dict:
+    fields = set(model.model_fields)
+    # The model uses null for "unspecified"; dropping the key lets the field
+    # default apply (priority -> none, status -> backlog, tags -> []).
+    return {key: value for key, value in obj.items() if key in fields and value is not None}
+
+
+def sanitize_interpretation(data: dict) -> dict:
+    """Drop stray keys the model adds inside actions.
+
+    Value validation stays strict; only shape noise (for example a stray
+    requires_confirmation inside an update action) is removed.
+    """
+    if not isinstance(data, dict):
+        return data
+    clean = _keep(data, Interpretation)
+    actions = clean.get("actions")
+    if not isinstance(actions, list):
+        return clean
+    sanitized = []
+    for action in actions:
+        if not isinstance(action, dict):
+            sanitized.append(action)
+            continue
+        kind = action.get("type") or action.get("action") or action.get("op")
+        model = _ACTION_MODELS.get(kind) if isinstance(kind, str) else None
+        if model is None:
+            sanitized.append(action)
+            continue
+        item = _keep({**action, "type": kind}, model)
+        if kind == "update_task" and isinstance(item.get("changes"), dict):
+            item["changes"] = _keep(item["changes"], UpdateChanges)
+        elif kind == "query_tasks" and isinstance(item.get("filter"), dict):
+            item["filter"] = _keep(item["filter"], QueryFilter)
+        elif kind == "plan_day" and isinstance(item.get("items"), list):
+            item["items"] = [
+                _keep(entry, PlanItem) if isinstance(entry, dict) else entry
+                for entry in item["items"]
+            ]
+        elif kind == "create_subtasks" and isinstance(item.get("subtasks"), list):
+            item["subtasks"] = [
+                _keep(entry, SubtaskSpec) if isinstance(entry, dict) else entry
+                for entry in item["subtasks"]
+            ]
+        sanitized.append(item)
+    clean["actions"] = sanitized
+    return clean
+
+
 def parse_interpretation(data: dict) -> Interpretation:
-    return Interpretation.model_validate(data)
+    return Interpretation.model_validate(sanitize_interpretation(data))
 
 
 def redacted_actions(actions: list[dict]) -> list[dict]:

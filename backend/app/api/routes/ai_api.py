@@ -36,6 +36,7 @@ async def interpret_text(
             text=body.text,
             view=body.view,
             selected_task_id=body.selected_task_id,
+            project_id=body.project_id,
         )
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
@@ -119,6 +120,7 @@ async def interpret_voice(
             duration_ms=body.duration_ms,
             view=body.view,
             selected_task_id=body.selected_task_id,
+            project_id=body.project_id,
             device_id=device.id if device else None,
         )
         with request.app.state.db.session() as session:
