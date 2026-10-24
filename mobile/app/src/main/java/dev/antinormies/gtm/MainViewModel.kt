@@ -139,7 +139,7 @@ class MainViewModel(
 
     fun moveTask(task: Task, status: String) {
         if (task.status == status) return
-        val target = if (status == "todo" && task.status == "inbox") "todo" else status
+        val target = status
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
             runCatching { repository.updateTask(task, mapOf("status" to target)) }
@@ -265,7 +265,7 @@ class MainViewModel(
             runCatching { repository.voice(transcript, durationMs) }
                 .onSuccess { proposal ->
                     if (proposal == null) {
-                        voiceError("Gemini returned no proposal.")
+                        voiceError("AI returned no proposal.")
                     } else {
                         _state.update {
                             it.copy(

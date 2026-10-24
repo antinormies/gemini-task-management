@@ -123,7 +123,7 @@ fun TaskDetailSheet(
                 PriorityPill(priority)
                 task.projectName?.let { Pill(it) }
                 formatEstimate(task.estimateMinutes)?.let { Pill(it) }
-                if (task.status == "inbox") Pill("Inbox")
+                if (task.status == "backlog") Pill("Backlog")
             }
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
@@ -141,7 +141,7 @@ fun TaskDetailSheet(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
-            Picker("Status", statusLabel(status), listOf("inbox", "todo", "in_progress", "waiting", "done").map { it to statusLabel(it) }) {
+            Picker("Status", statusLabel(status), listOf("backlog", "research", "sprint", "review", "done").map { it to statusLabel(it) }) {
                 status = it
             }
             Spacer(Modifier.height(8.dp))

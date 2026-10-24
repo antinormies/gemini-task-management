@@ -44,7 +44,7 @@ fun ProposalSheet(
                 .padding(horizontal = 22.dp)
                 .padding(bottom = 28.dp)
         ) {
-            Text("GEMINI PROPOSAL", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("AI PROPOSAL", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             Text(
                 proposal.intent.replace("_", " "),

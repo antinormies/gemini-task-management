@@ -98,7 +98,7 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
             KeyValue("SQLite database", formatBytes(usage?.storage?.dbBytes ?: 0L))
             KeyValue("Backups", formatBytes(usage?.storage?.backupsBytes ?: 0L))
             KeyValue("Logs", formatBytes(usage?.storage?.logsBytes ?: 0L))
-            KeyValue("agy workspace", formatBytes(usage?.storage?.workspaceBytes ?: 0L))
+            KeyValue("Workspace", formatBytes(usage?.storage?.workspaceBytes ?: 0L))
         }
 
         Spacer(Modifier.height(12.dp))
@@ -107,8 +107,8 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
                 Text("Loading health…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
                 KeyValue("Database", if (health.dbOk) "online" else "offline")
-                KeyValue("agy", if (health.agyInstalled) health.agyModel else "not found")
-                KeyValue("OpenCode Go", if (health.openCodeConfigured) health.openCodeModel else "not configured")
+                KeyValue("AI provider", "self")
+                KeyValue("Model", if (health.aiConfigured) health.aiModel else "not configured")
                 KeyValue("Voice", if (health.voiceEnabled) health.voiceProvider else "disabled")
             }
         }

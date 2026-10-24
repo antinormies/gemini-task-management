@@ -52,10 +52,10 @@ fun priorityColor(priority: String): Color = when (priority) {
 }
 
 fun statusLabel(status: String): String = when (status) {
-    "inbox" -> "Inbox"
-    "todo" -> "To do"
-    "in_progress" -> "In progress"
-    "waiting" -> "Waiting"
+    "backlog", "inbox", "todo" -> "Backlog"
+    "research" -> "Research"
+    "sprint", "in_progress" -> "Sprint"
+    "review", "waiting" -> "Review"
     "done" -> "Done"
     "cancelled" -> "Cancelled"
     else -> status

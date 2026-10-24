@@ -71,20 +71,22 @@ import kotlin.math.roundToInt
 private data class BoardColumn(val key: String, val label: String)
 
 private val boardColumns = listOf(
-    BoardColumn("todo", "To do"),
-    BoardColumn("prog", "In progress"),
-    BoardColumn("waiting", "Waiting"),
+    BoardColumn("backlog", "Backlog"),
+    BoardColumn("research", "Research"),
+    BoardColumn("sprint", "Sprint"),
+    BoardColumn("review", "Review"),
     BoardColumn("done", "Done")
 )
 
 private fun phaseForTask(task: Task): String = when (task.status) {
-    "in_progress" -> "prog"
-    "waiting" -> "waiting"
+    "research" -> "research"
+    "sprint", "in_progress" -> "sprint"
+    "review", "waiting" -> "review"
     "done" -> "done"
-    else -> "todo"
+    else -> "backlog"
 }
 
-private fun statusForPhase(key: String): String = if (key == "prog") "in_progress" else key
+private fun statusForPhase(key: String): String = key
 
 @Composable
 fun TasksScreen(
@@ -338,9 +340,10 @@ fun TasksScreen(
             } else {
                 Column(Modifier.padding(horizontal = 20.dp)) {
                     listOf(
-                        "To do" to filtered.filter { it.status == "inbox" || it.status == "todo" },
-                        "In progress" to filtered.filter { it.status == "in_progress" },
-                        "Waiting" to filtered.filter { it.status == "waiting" },
+                        "Backlog" to filtered.filter { it.status == "backlog" || it.status == "inbox" || it.status == "todo" },
+                        "Research" to filtered.filter { it.status == "research" },
+                        "Sprint" to filtered.filter { it.status == "sprint" || it.status == "in_progress" },
+                        "Review" to filtered.filter { it.status == "review" || it.status == "waiting" },
                         "Done" to filtered.filter { it.status == "done" }
                     ).forEach { (label, group) ->
                         if (group.isNotEmpty()) {

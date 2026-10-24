@@ -64,7 +64,7 @@ class GtmRepository(
     suspend fun createSubtask(parentId: String, title: String): Boolean = withContext(Dispatchers.IO) {
         val body = JSONObject()
             .put("title", title)
-            .put("status", "todo")
+            .put("status", "backlog")
             .put("parent_id", parentId)
         api.request("POST", "/api/tasks", body)
         true
@@ -88,7 +88,7 @@ class GtmRepository(
         withContext(Dispatchers.IO) {
             val body = JSONObject()
                 .put("title", title)
-                .put("status", "inbox")
+                .put("status", "backlog")
                 .put("priority", priority)
             if (!projectId.isNullOrBlank()) body.put("project_id", projectId)
             if (!dueAt.isNullOrBlank()) body.put("due_at", dueAt)
