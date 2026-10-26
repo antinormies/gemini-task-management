@@ -22,14 +22,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -72,6 +77,8 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
         label = "wave"
     )
 
+    var typeOpen by remember { mutableStateOf(false) }
+    var typedCommand by remember { mutableStateOf("") }
     val listening = state.voiceState == VoiceState.LISTENING
     val captured = state.voiceState == VoiceState.CAPTURED
     val error = state.voiceState == VoiceState.ERROR
@@ -89,7 +96,7 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
         thinking -> "Building a structured proposal…"
         captured -> state.proposal?.message?.ifBlank { "Review what changed, then apply." } ?: "Review what changed, then apply."
         error -> state.error ?: "Nothing was saved. Try again."
-        else -> "Say what you need to do. GTM turns it into a task and shows you exactly what will change."
+        else -> "Say what you need to do. Call Task AI turns it into a task and shows you exactly what will change."
     }
     val pill = when (state.voiceState) {
         VoiceState.IDLE -> "Idle"
@@ -109,13 +116,13 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.radialGradient(listOf(Color(0xFF141419), GtmColors.stage), radius = 950f))
+            .background(Brush.verticalGradient(listOf(GtmColors.stageTop, GtmColors.stage)))
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 22.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("GTM", style = MaterialTheme.typography.labelLarge, color = GtmColors.stageMuted)
+            Text("CALL TASK AI", style = MaterialTheme.typography.labelLarge, color = GtmColors.stageMuted)
             Spacer(Modifier.weight(1f))
             Surface(color = Color.White.copy(alpha = 0.06f), shape = RoundedCornerShape(99.dp)) {
                 Row(
@@ -229,7 +236,7 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
         when {
             state.proposal != null && !state.showProposal -> CaptureCard(state, viewModel)
             thinking -> Text(
-                "Gemini is building the proposal…",
+                "AI is building the proposal…",
                 style = MaterialTheme.typography.bodySmall,
                 color = GtmColors.stageMuted
             )
@@ -244,19 +251,51 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
                 )
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(4.dp))
+        TextButton(onClick = { typeOpen = true }, enabled = !thinking && !listening) {
+            Text("Type instead", color = GtmColors.wave, style = MaterialTheme.typography.bodySmall)
+        }
+        Spacer(Modifier.height(8.dp))
         Text(
             when {
                 listening -> "Tap the orb when you are done · 10s silence auto-finishes"
                 captured -> "Review the card, then add it to your tasks"
                 error -> "Nothing was saved — the orb is still ready"
-                else -> "Audio is handled by your phone's speech service. GTM receives only the transcript."
+                else -> "Audio is handled by your phone's speech service. Call Task AI receives only the transcript."
             },
             style = MaterialTheme.typography.bodySmall,
             color = GtmColors.stageMuted,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(16.dp))
+    }
+    if (typeOpen) {
+        AlertDialog(
+            onDismissRequest = { typeOpen = false },
+            title = { Text("Type a command") },
+            text = {
+                OutlinedTextField(
+                    value = typedCommand,
+                    onValueChange = { typedCommand = it },
+                    placeholder = { Text("e.g. Add a task to buy milk tomorrow") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 4
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val text = typedCommand.trim()
+                    if (text.isNotEmpty()) {
+                        typeOpen = false
+                        typedCommand = ""
+                        viewModel.voiceFinished(text, 0)
+                    }
+                }) { Text("Send") }
+            },
+            dismissButton = {
+                TextButton(onClick = { typeOpen = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 

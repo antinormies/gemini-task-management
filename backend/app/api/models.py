@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     description: str = ""
-    status: str = "inbox"
+    status: str = "backlog"
     priority: str = "none"
     due_at: str | None = None
     due_all_day: bool = False
@@ -54,6 +54,7 @@ class TextInterpretRequest(BaseModel):
     text: str
     view: str = "today"
     selected_task_id: str | None = None
+    project_id: str | None = None
 
 
 class VoiceRequest(BaseModel):
@@ -61,6 +62,7 @@ class VoiceRequest(BaseModel):
     duration_ms: int = 0
     view: str = "speak"
     selected_task_id: str | None = None
+    project_id: str | None = None
     language: str = "en-US"
 
 

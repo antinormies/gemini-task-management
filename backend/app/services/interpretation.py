@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 
 from sqlalchemy import select
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..ai.clients import AIError
 from ..ai.prompts import build_prompt, build_voice_prompt
-from ..ai.schemas import Interpretation
+from ..ai.schemas import CompleteTaskAction, Interpretation, UpdateChanges, UpdateTaskAction
 from ..ai.service import AIService
 from ..config import Settings
 from ..db import Database
@@ -18,8 +19,43 @@ from . import projects as project_service
 from . import proposals as proposal_service
 from .errors import NotFound, ValidationError
 
+STAGE_MOVE = re.compile(
+    r"\bmove\b[^.]*?\bto\b\s+(backlog|research|sprint|review|done)\b", re.IGNORECASE
+)
 
-def _context(session: Session, view: str, selected_task_id: str | None) -> dict:
+
+def _repair_stage_move(interpretation, text: str):
+    """The model sometimes emits complete_task for "move <task> to <stage>".
+
+    A stage move is an update; repair it deterministically so the user's
+    explicit stage wording cannot complete the task by accident.
+    """
+    match = STAGE_MOVE.search(text or "")
+    if not match:
+        return interpretation
+    stage = match.group(1).lower()
+    actions = []
+    changed = False
+    for action in interpretation.actions:
+        if isinstance(action, CompleteTaskAction):
+            actions.append(
+                UpdateTaskAction(
+                    type="update_task",
+                    task_id=action.task_id,
+                    changes=UpdateChanges(status=stage),
+                )
+            )
+            changed = True
+        else:
+            actions.append(action)
+    if not changed:
+        return interpretation
+    return interpretation.model_copy(update={"actions": actions, "intent": "update_task"})
+
+
+def _context(
+    session: Session, view: str, selected_task_id: str | None, project_id: str | None = None
+) -> dict:
     projects = project_service.list_projects(session)
     selected = None
     if selected_task_id:
@@ -42,6 +78,7 @@ def _context(session: Session, view: str, selected_task_id: str | None) -> dict:
     return {
         "view": view,
         "selected_task_id": selected_task_id,
+        "current_project_id": project_id,
         "project_ids": [p.id for p in projects],
         "projects": [{"id": p.id, "name": p.name} for p in projects],
         "selected_task": selected,
@@ -69,6 +106,7 @@ def create_text_run(
     text: str,
     view: str = "today",
     selected_task_id: str | None = None,
+    project_id: str | None = None,
     request_id: str | None = None,
 ) -> AIRun:
     text = (text or "").strip()
@@ -76,13 +114,13 @@ def create_text_run(
         raise ValidationError("Text is required")
     if len(text) > 4000:
         raise ValidationError("Text is limited to 4,000 characters")
-    context = _context(session, view, selected_task_id)
+    context = _context(session, view, selected_task_id, project_id)
     context["timezone"] = settings.timezone
     run = AIRun(
         request_id=request_id or __import__("app.security", fromlist=["new_id"]).new_id(),
         kind="interpret",
         status="queued",
-        model=settings.agy_model if settings.ai_provider != "opencode" else settings.opencode_model,
+        model=settings.ai_model,
         input_text=text,
         context_json=json.dumps(context, ensure_ascii=False),
     )
@@ -106,12 +144,13 @@ async def process_text_run(
             run.input_text,
             projects=context.get("projects", []),
             selected_task=context.get("selected_task"),
+            current_project=context.get("current_project_id"),
             now=now_utc(),
             tasks=context.get("tasks", []),
         )
     started = datetime.now()
     try:
-        result = await ai_service.interpret(prompt, provider=settings.ai_provider)
+        result = await ai_service.interpret(prompt)
     except AIError as exc:
         with db.session() as session:
             run = session.get(AIRun, run_id)
@@ -141,7 +180,8 @@ async def process_text_run(
             context = json.loads(run.context_json or "{}")
             context["provider"] = result.provider
             run.context_json = json.dumps(context, ensure_ascii=False)
-            proposal_service.create_proposal(session, run, result.interpretation, settings)
+            interpretation = _repair_stage_move(result.interpretation, run.input_text)
+            proposal_service.create_proposal(session, run, interpretation, settings)
         except Exception as exc:
             run.status = "failed"
             run.error_code = "PROPOSAL_INVALID"
@@ -157,6 +197,7 @@ async def interpret_voice(
     duration_ms: int,
     view: str = "speak",
     selected_task_id: str | None = None,
+    project_id: str | None = None,
     device_id: str | None = None,
 ) -> tuple[AIRun, AIProposal, Interpretation]:
     transcript = (transcript or "").strip()
@@ -167,16 +208,14 @@ async def interpret_voice(
     if duration_ms < 0 or duration_ms > settings.voice_max_seconds * 1000:
         raise ValidationError("Voice duration is out of range")
     with db.session() as session:
-        context = _context(session, view, selected_task_id)
+        context = _context(session, view, selected_task_id, project_id)
         context["timezone"] = settings.timezone
         context["voice_input"] = "system_stt"
         run = AIRun(
             request_id=__import__("app.security", fromlist=["new_id"]).new_id(),
             kind="voice_interpret",
             status="running",
-            model=settings.opencode_model
-            if settings.voice_provider == "opencode"
-            else settings.gemini_model,
+            model=settings.ai_model,
             input_text=transcript,
             context_json=json.dumps(context, ensure_ascii=False),
             speech_ms=duration_ms,
@@ -191,17 +230,13 @@ async def interpret_voice(
             transcript,
             projects=context.get("projects", []),
             selected_task=context.get("selected_task"),
+            current_project=context.get("current_project_id"),
             now=now_utc(),
             tasks=context.get("tasks", []),
         )
     started = datetime.now()
     try:
-        result = await ai_service.interpret(
-            prompt,
-            provider=settings.voice_provider
-            if settings.voice_provider != "auto"
-            else settings.ai_provider,
-        )
+        result = await ai_service.interpret(prompt)
     except AIError as exc:
         with db.session() as session:
             run = session.get(AIRun, run_id)
@@ -230,7 +265,8 @@ async def interpret_voice(
         context = json.loads(run.context_json or "{}")
         context["provider"] = result.provider
         run.context_json = json.dumps(context, ensure_ascii=False)
-        interpretation = result.interpretation.model_copy(update={"transcript": transcript})
+        interpretation = _repair_stage_move(result.interpretation, transcript)
+        interpretation = interpretation.model_copy(update={"transcript": transcript})
         proposal = proposal_service.create_proposal(session, run, interpretation, settings)
         return run, proposal, interpretation
 

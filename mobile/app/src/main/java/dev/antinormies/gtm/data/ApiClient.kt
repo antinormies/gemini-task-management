@@ -29,7 +29,14 @@ class ApiClient {
             .header("X-GTM-Client", "android/0.1")
         token?.let { builder.header("Authorization", "Bearer " + it) }
         val payload = body?.toString()?.toRequestBody(jsonType)
-        builder.method(method, payload)
+        // OkHttp rejects POST/PUT/PATCH with a null body ("method POST must have
+        // a request body"), which silently broke every body-less action the app
+        // makes: complete, reopen, device revoke, unpair, backup, rebuild search.
+        val requiresBody = method == "POST" || method == "PUT" || method == "PATCH"
+        builder.method(
+            method,
+            if (requiresBody && payload == null) "{}".toRequestBody(jsonType) else payload
+        )
         client.newCall(builder.build()).execute().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) {

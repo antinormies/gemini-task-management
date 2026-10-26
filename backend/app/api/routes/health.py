@@ -30,7 +30,7 @@ def health(
         "ai": ai.status(),
         "voice": {
             "enabled": settings.voice_enabled,
-            "provider": settings.voice_provider,
+            "provider": "self",
             "input": "system_stt",
             "max_seconds": settings.voice_max_seconds,
         },

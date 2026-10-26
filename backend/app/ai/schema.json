@@ -39,7 +39,7 @@
         "client_ref": {"type": "string", "maxLength": 40},
         "title": {"type": "string", "minLength": 1, "maxLength": 300},
         "description": {"type": ["string", "null"], "maxLength": 5000},
-        "status": {"enum": ["inbox", "todo"]},
+        "status": {"enum": ["backlog", "research", "sprint", "review"]},
         "priority": {"enum": ["none", "low", "medium", "high", "urgent"]},
         "due_at": {"type": ["string", "null"], "format": "date-time"},
         "due_all_day": {"type": "boolean"},
@@ -63,7 +63,7 @@
           "properties": {
             "title": {"type": "string", "minLength": 1, "maxLength": 300},
             "description": {"type": "string", "maxLength": 5000},
-            "status": {"enum": ["inbox", "todo", "in_progress", "waiting", "done", "cancelled"]},
+            "status": {"enum": ["backlog", "research", "sprint", "review", "done", "cancelled"]},
             "priority": {"enum": ["none", "low", "medium", "high", "urgent"]},
             "due_at": {"type": ["string", "null"], "format": "date-time"},
             "due_all_day": {"type": "boolean"},
@@ -99,7 +99,7 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "status": {"type": "array", "items": {"enum": ["inbox", "todo", "in_progress", "waiting", "done", "cancelled"]}},
+            "status": {"type": "array", "items": {"enum": ["backlog", "research", "sprint", "review", "done", "cancelled"]}},
             "due_before": {"type": ["string", "null"], "format": "date-time"},
             "due_after": {"type": ["string", "null"], "format": "date-time"},
             "project_id": {"type": ["string", "null"]},

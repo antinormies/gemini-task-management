@@ -57,7 +57,7 @@ fun QuickAddDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Project", color = GtmColors.muted, modifier = Modifier.weight(1f))
+                    Text("Project", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     androidx.compose.foundation.layout.Box {
                         OutlinedButton(onClick = { projectMenu = true }) {
                             Text(projects.firstOrNull { it.id == projectId }?.name ?: "No project")
@@ -75,7 +75,7 @@ fun QuickAddDialog(
                 }
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Priority", color = GtmColors.muted, modifier = Modifier.weight(1f))
+                    Text("Priority", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     androidx.compose.foundation.layout.Box {
                         OutlinedButton(onClick = { priorityMenu = true }) {
                             Text(priority.replaceFirstChar { it.uppercase() })

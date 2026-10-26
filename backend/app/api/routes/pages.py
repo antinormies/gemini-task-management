@@ -20,11 +20,12 @@ def _context(session: Session, settings, view: str, project_id: str | None = Non
     counts = {
         key: len(task_service.list_tasks(session, view=view_name, tz_name=settings.timezone))
         for key, view_name in {
-            "inbox": "inbox",
-            "today": "today",
-            "upcoming": "upcoming",
-            "waiting": "waiting",
+            "backlog": "backlog",
+            "research": "research",
+            "sprint": "sprint",
+            "review": "review",
             "done": "done",
+            "all": "all",
         }.items()
     }
     return {
@@ -54,16 +55,38 @@ def _render(request: Request, view: str, project_id: str | None = None):
     return TEMPLATES.TemplateResponse(request, "index.html", ctx)
 
 
+LEGACY_VIEWS = {
+    "today": "all",
+    "inbox": "backlog",
+    "upcoming": "all",
+    "anytime": "all",
+    "waiting": "review",
+}
+
+
 @router.get("/", response_class=HTMLResponse)
-def today_page(request: Request):
-    return _render(request, "today")
+def home_page(request: Request):
+    return _render(request, "all")
 
 
 @router.get("/{view}", response_class=HTMLResponse)
 def view_page(view: str, request: Request):
-    if view not in {"today", "inbox", "upcoming", "anytime", "waiting", "done", "settings"}:
-        return _render(request, "today")
-    return _render(request, view)
+    if view not in {
+        "all",
+        "backlog",
+        "research",
+        "sprint",
+        "review",
+        "done",
+        "settings",
+        "today",
+        "inbox",
+        "upcoming",
+        "anytime",
+        "waiting",
+    }:
+        return _render(request, "all")
+    return _render(request, LEGACY_VIEWS.get(view, view))
 
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)

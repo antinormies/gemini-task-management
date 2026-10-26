@@ -35,7 +35,7 @@ fun ProposalSheet(
     ModalBottomSheet(
         onDismissRequest = onDiscard,
         sheetState = sheetState,
-        containerColor = GtmColors.surface
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
             Modifier
@@ -44,11 +44,15 @@ fun ProposalSheet(
                 .padding(horizontal = 22.dp)
                 .padding(bottom = 28.dp)
         ) {
-            Text("GEMINI PROPOSAL", style = MaterialTheme.typography.labelMedium, color = GtmColors.muted)
+            Text("AI PROPOSAL", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
-            Text(proposal.intent.replace("_", " "), style = MaterialTheme.typography.titleLarge)
+            Text(
+                proposal.intent.replace("_", " "),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Spacer(Modifier.height(6.dp))
-            Text(proposal.message, style = MaterialTheme.typography.bodyMedium, color = GtmColors.ink2)
+            Text(proposal.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Pill("Confidence " + (proposal.confidence * 100).toInt() + "%")
@@ -61,11 +65,11 @@ fun ProposalSheet(
                         .fillMaxWidth()
                         .padding(vertical = 6.dp)
                 ) {
-                    Text(item.op.uppercase(), style = MaterialTheme.typography.labelMedium, color = GtmColors.accent)
+                    Text(item.op.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     Text(item.title, style = MaterialTheme.typography.titleMedium)
-                    Text(item.summary, style = MaterialTheme.typography.bodySmall, color = GtmColors.muted)
+                    Text(item.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                androidx.compose.material3.Divider(color = GtmColors.line)
+                androidx.compose.material3.Divider(color = MaterialTheme.colorScheme.outlineVariant)
             }
             Spacer(Modifier.height(18.dp))
             Button(onClick = onApply, modifier = Modifier.fillMaxWidth()) { Text("Apply changes") }
@@ -75,7 +79,7 @@ fun ProposalSheet(
             Text(
                 "Destructive actions always require this confirmation. Nothing is applied automatically.",
                 style = MaterialTheme.typography.bodySmall,
-                color = GtmColors.meta
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

@@ -22,7 +22,7 @@ def test_voice_proposal_and_apply(app, client):
                     "type": "create_task",
                     "client_ref": "t1",
                     "title": "Call the dentist",
-                    "status": "todo",
+                    "status": "backlog",
                     "priority": "high",
                 }
             ],

@@ -110,7 +110,14 @@ def validate_actions(
             )
         elif isinstance(action, UpdateTaskAction):
             task = task_service.get_task(session, action.task_id)
-            changes = action.changes.model_dump(exclude_unset=True, mode="json")
+            # The model fills every field and uses null for "leave unchanged".
+            # Drop those nulls before previewing/applying; otherwise they reach
+            # update_task as status=None and fail with "Invalid status".
+            changes = {
+                key: value
+                for key, value in action.changes.model_dump(exclude_unset=True, mode="json").items()
+                if value is not None
+            }
             if not changes:
                 raise ActionError("update_task has no changes")
             if changes.get("project_id"):
@@ -268,7 +275,7 @@ def apply_proposal(
         elif isinstance(action, UpdateTaskAction):
             task = task_service.get_task(session, action.task_id)
             snap(task)
-            changes = action.changes.model_dump(exclude_unset=True)
+            changes = action.changes.model_dump(exclude_unset=True, exclude_none=True)
             updated = task_service.update_task(
                 session, task.id, changes, actor="ai", tz_name=settings.timezone
             )
@@ -292,7 +299,7 @@ def apply_proposal(
                     {
                         "title": spec.title,
                         "description": spec.description,
-                        "status": "todo",
+                        "status": "backlog",
                         "priority": parent.priority,
                         "project_id": parent.project_id,
                         "parent_id": parent.id,

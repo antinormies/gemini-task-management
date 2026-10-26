@@ -35,7 +35,7 @@ fun PairingScreen(viewModel: MainViewModel, state: UiState) {
     var server by remember { mutableStateOf(state.serverUrl) }
     var code by remember { mutableStateOf("") }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = GtmColors.surfaceSoft) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -44,14 +44,14 @@ fun PairingScreen(viewModel: MainViewModel, state: UiState) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("GTM", style = MaterialTheme.typography.labelLarge, color = GtmColors.muted)
+            Text("GTM", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
             Text("Your tasks, on your phone.", style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center)
             Spacer(Modifier.height(8.dp))
             Text(
                 "Pair this phone with the GTM server. Generate a six-digit code in the web Settings page.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = GtmColors.muted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(28.dp))
@@ -73,7 +73,7 @@ fun PairingScreen(viewModel: MainViewModel, state: UiState) {
             )
             state.error?.let {
                 Spacer(Modifier.height(10.dp))
-                Text(it, color = GtmColors.danger, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
             }
             Spacer(Modifier.height(18.dp))
             Button(
@@ -88,7 +88,7 @@ fun PairingScreen(viewModel: MainViewModel, state: UiState) {
             Text(
                 "The server must be reachable over HTTPS (Tailscale) or USB debugging with adb reverse.",
                 style = MaterialTheme.typography.bodySmall,
-                color = GtmColors.meta,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         }

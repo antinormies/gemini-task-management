@@ -41,8 +41,8 @@
 ### AI configuration
 
 - `backend/.env` is local and ignored. It must contain a non-empty `GTM_SECRET_KEY`.
-- Provider order for text is `agy` → OpenCode Go (`deepseek-v4.1-flash`) → Gemini, controlled by `GTM_AI_PROVIDER`.
-- Voice is transcript-only: the Android speech recognizer produces the text; the backend uses `GTM_VOICE_PROVIDER`. Never upload audio in v1.
+- AI is a **single self provider**: the MemeChat Gateway completion endpoint (`GTM_AI_BASE_URL`), authenticated with `GTM_AI_API_KEY`, model `GTM_AI_MODEL` (`deepseek-v4.1-flash`). GTM has no direct Gemini/agy/OpenCode dependency.
+- Voice is transcript-only: the Android speech recognizer produces the text; the backend sends it to the same self provider. Never upload audio in v1.
 - Never print, commit, or log API keys, device tokens, or pairing codes.
 
 ### Environment facts

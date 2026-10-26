@@ -87,7 +87,7 @@ fun TaskDetailSheet(
                 TextButton(onClick = {
                     confirmArchive = false
                     onArchive(task)
-                }) { Text("Archive", color = GtmColors.danger) }
+                }) { Text("Archive", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { confirmArchive = false }) { Text("Cancel") } }
         )
@@ -96,7 +96,7 @@ fun TaskDetailSheet(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        containerColor = GtmColors.surface
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
             Modifier
@@ -107,10 +107,11 @@ fun TaskDetailSheet(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(task.shortKey + " · " + statusLabel(task.status), style = MaterialTheme.typography.labelMedium, color = GtmColors.meta)
+                    Text(task.shortKey + " · " + statusLabel(task.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         title.ifBlank { "Task" },
                         style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -122,7 +123,7 @@ fun TaskDetailSheet(
                 PriorityPill(priority)
                 task.projectName?.let { Pill(it) }
                 formatEstimate(task.estimateMinutes)?.let { Pill(it) }
-                if (task.status == "inbox") Pill("Inbox")
+                if (task.status == "backlog") Pill("Backlog")
             }
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
@@ -140,7 +141,7 @@ fun TaskDetailSheet(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
-            Picker("Status", statusLabel(status), listOf("inbox", "todo", "in_progress", "waiting", "done").map { it to statusLabel(it) }) {
+            Picker("Status", statusLabel(status), listOf("backlog", "research", "sprint", "review", "done").map { it to statusLabel(it) }) {
                 status = it
             }
             Spacer(Modifier.height(8.dp))
@@ -207,7 +208,7 @@ fun TaskDetailSheet(
                     Text(if (task.isDone) "Reopen" else "Complete")
                 }
             }
-            TextButton(onClick = { confirmArchive = true }) { Text("Archive", color = GtmColors.danger) }
+            TextButton(onClick = { confirmArchive = true }) { Text("Archive", color = MaterialTheme.colorScheme.error) }
             Spacer(Modifier.height(12.dp))
             SectionLabel("Checklist")
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -224,11 +225,11 @@ fun TaskDetailSheet(
                 }) { Text("Add") }
             }
             if (task.subtasks.isEmpty()) {
-                Text("No subtasks yet.", style = MaterialTheme.typography.bodySmall, color = GtmColors.meta, modifier = Modifier.padding(vertical = 6.dp))
+                Text("No subtasks yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
             } else {
                 task.subtasks.forEach { child ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-                        Text(if (child.isDone) "✓" else "○", color = if (child.isDone) GtmColors.success else GtmColors.meta)
+                        Text(if (child.isDone) "✓" else "○", color = if (child.isDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(8.dp))
                         Text(child.title, style = MaterialTheme.typography.bodyMedium)
                     }
@@ -240,7 +241,7 @@ fun TaskDetailSheet(
                 Text(
                     event.eventType + " · " + event.actor + " · " + event.createdAt.take(16).replace("T", " "),
                     style = MaterialTheme.typography.bodySmall,
-                    color = GtmColors.meta,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
@@ -253,7 +254,7 @@ fun TaskDetailSheet(
 private fun Picker(label: String, current: String, options: List<Pair<String, String>>, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = GtmColors.muted, modifier = Modifier.weight(1f))
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
         Box {
             OutlinedButton(onClick = { open = true }) { Text(current) }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {

@@ -60,7 +60,7 @@ data class Task(
                 shortKey = json.optString("short_key", "GTM"),
                 title = json.optString("title"),
                 description = json.optString("description"),
-                status = json.optString("status", "inbox"),
+                status = json.optString("status", "backlog"),
                 priority = json.optString("priority", "none"),
                 dueAt = json.nullableString("due_at"),
                 dueAllDay = json.optBoolean("due_all_day", false),
@@ -94,18 +94,52 @@ data class Project(
 
 data class Preview(val op: String, val title: String, val summary: String) {
     companion object {
+        private fun render(key: String, value: Any?): String {
+            if (value == null || value == JSONObject.NULL) return "—"
+            if (value is JSONArray) {
+                return (0 until value.length()).joinToString(", ") { value.optString(it) }.ifBlank { "—" }
+            }
+            val text = value.toString()
+            return when (key) {
+                "due_at" -> text.take(16).replace("T", " ")
+                "due_all_day" -> if (text == "true") "all day" else "timed"
+                "status" -> text.replace("_", " ")
+                "estimate_minutes" -> "$text min"
+                "project_id" -> "selected project"
+                else -> text
+            }
+        }
+
+        private fun fromChanges(changes: JSONObject): String =
+            changes.keys().asSequence().joinToString(" · ") { key ->
+                val change = changes.optJSONObject(key)
+                val to = change?.opt("to")
+                val from = change?.opt("from")
+                if (change == null || to == null) key.replace("_", " ")
+                else key.replace("_", " ") + ": " + render(key, from) + " → " + render(key, to)
+            }
+
+        private fun fromFields(fields: JSONObject): String {
+            val parts = mutableListOf<String>()
+            fields.optString("status").takeIf { it.isNotBlank() }?.let { parts.add(it.replace("_", " ")) }
+            fields.optString("priority").takeIf { it.isNotBlank() && it != "none" }?.let { parts.add("priority " + it) }
+            fields.optString("due_at").takeIf { it.isNotBlank() }?.let { parts.add("due " + it.take(16).replace("T", " ")) }
+            fields.optJSONArray("tags")?.let { if (it.length() > 0) parts.add(it.length().toString() + " tags") }
+            return parts.joinToString(" · ")
+        }
+
         fun from(json: JSONObject): Preview {
             val op = json.optString("op", "change")
             val title = json.optString("title", json.optString("parent_title", op))
             val summary = when (op) {
-                "create" -> "Create task"
-                "update" -> json.optJSONObject("changes")?.toString() ?: "Update task"
+                "create" -> fromFields(json.optJSONObject("fields") ?: JSONObject()).ifBlank { "New task" }
+                "update" -> json.optJSONObject("changes")?.let { fromChanges(it) }?.ifBlank { "Update task" } ?: "Update task"
                 "archive" -> "Archive task"
                 "complete" -> "Complete task"
                 "query" -> "Found " + json.optInt("count", 0) + " tasks"
                 "plan_day" -> "Plan " + json.optString("date")
                 "create_subtasks" -> json.optInt("count", 0).toString() + " subtasks"
-                else -> json.toString()
+                else -> op.replace("_", " ")
             }
             return Preview(op, title, summary)
         }
@@ -157,10 +191,8 @@ data class Device(
 data class Health(
     val dbOk: Boolean,
     val provider: String,
-    val agyInstalled: Boolean,
-    val agyModel: String,
-    val openCodeConfigured: Boolean,
-    val openCodeModel: String,
+    val aiConfigured: Boolean,
+    val aiModel: String,
     val voiceEnabled: Boolean,
     val voiceProvider: String
 ) {
@@ -171,11 +203,9 @@ data class Health(
             val voice = json.optJSONObject("voice")
             return Health(
                 dbOk = db?.optBoolean("ok", false) ?: false,
-                provider = ai?.optString("provider", "auto") ?: "auto",
-                agyInstalled = ai?.optBoolean("agy_installed", false) ?: false,
-                agyModel = ai?.optString("agy_model", "") ?: "",
-                openCodeConfigured = ai?.optBoolean("opencode_configured", false) ?: false,
-                openCodeModel = ai?.optString("opencode_model", "") ?: "",
+                provider = ai?.optString("provider", "self") ?: "self",
+                aiConfigured = ai?.optBoolean("configured", false) ?: false,
+                aiModel = ai?.optString("model", "") ?: "",
                 voiceEnabled = voice?.optBoolean("enabled", false) ?: false,
                 voiceProvider = voice?.optString("provider", "auto") ?: "auto"
             )

@@ -18,17 +18,32 @@ from ..timeutils import (
 )
 from .errors import ConflictError, NotFound, ValidationError
 
-ACTIVE = ("inbox", "todo", "in_progress", "waiting")
-ALL_STATUSES = ("inbox", "todo", "in_progress", "waiting", "done", "cancelled")
+STATUSES = ("backlog", "research", "sprint", "review", "done")
+ACTIVE = ("backlog", "research", "sprint", "review")
+ALL_STATUSES = STATUSES + ("cancelled",)
+STATUS_ORDER = {name: index for index, name in enumerate(STATUSES + ("cancelled",))}
+# Old clients (the shipped APK, old bookmarks) still send the previous names.
+LEGACY_STATUS = {
+    "inbox": "backlog",
+    "todo": "backlog",
+    "in_progress": "sprint",
+    "waiting": "review",
+}
 PRIORITIES = ("none", "low", "medium", "high", "urgent")
 TRANSITIONS = {
-    "inbox": {"todo", "cancelled"},
-    "todo": {"in_progress", "waiting", "done", "cancelled"},
-    "in_progress": {"waiting", "todo", "done", "cancelled"},
-    "waiting": {"todo", "in_progress", "done", "cancelled"},
-    "done": {"todo"},
-    "cancelled": {"inbox", "todo"},
+    "backlog": {"research", "sprint", "review", "done", "cancelled"},
+    "research": {"backlog", "sprint", "review", "done", "cancelled"},
+    "sprint": {"backlog", "research", "review", "done", "cancelled"},
+    "review": {"backlog", "research", "sprint", "done", "cancelled"},
+    "done": {"backlog", "research", "sprint", "review"},
+    "cancelled": {"backlog", "research", "sprint", "review"},
 }
+
+
+def normalize_status(value: str | None) -> str:
+    return LEGACY_STATUS.get(value or "", value or "")
+
+
 PRIORITY_RANK = {"urgent": 0, "high": 1, "medium": 2, "low": 3, "none": 4}
 
 
@@ -211,7 +226,7 @@ def create_task(
         raise ValidationError("Title is required")
     if len(title) > 300:
         raise ValidationError("Title is too long")
-    status = data.get("status") or "inbox"
+    status = normalize_status(data.get("status") or "backlog")
     if status not in ALL_STATUSES:
         raise ValidationError("Invalid status")
     priority = data.get("priority") or "none"
@@ -294,10 +309,12 @@ def update_task(
         if field == "description":
             value = str(value)[:5000]
         if field == "status":
+            value = normalize_status(value)
+            current = normalize_status(task.status)
             if value not in ALL_STATUSES:
                 raise ValidationError("Invalid status")
-            if value != task.status and value not in TRANSITIONS.get(task.status, set()):
-                raise ValidationError(f"Cannot move from {task.status} to {value}")
+            if value != current and value not in TRANSITIONS.get(current, set()):
+                raise ValidationError(f"Cannot move from {current} to {value}")
         if field == "priority" and value not in PRIORITIES:
             raise ValidationError("Invalid priority")
         if field == "project_id" and value:
@@ -372,7 +389,7 @@ def reopen_task(session: Session, task_id: str, *, actor: str = "user") -> Task:
     if task.status not in ("done", "cancelled"):
         raise ValidationError("Only done or cancelled tasks can be reopened")
     old = task.status
-    task.status = "todo"
+    task.status = "backlog"
     task.completed_at = None
     task.archived_at = None
     task.updated_at = now_iso()
@@ -436,24 +453,26 @@ def list_tasks(
     now = local_now(tz_name)
     day_start, day_end = local_day_bounds(now.date(), tz_name)
     query = select(Task).where(Task.archived_at.is_(None))
-    if view == "today":
+    if view in ("backlog", "research", "sprint", "review"):
+        query = query.where(Task.status == view)
+    elif view == "today":
         query = query.where(
-            Task.status.notin_(("done", "cancelled")),
+            Task.status.in_(ACTIVE),
             or_(Task.due_at < iso(day_end), Task.scheduled_start_at < iso(day_end)),
         )
     elif view == "inbox":
-        query = query.where(Task.status == "inbox")
+        query = query.where(Task.status == "backlog")
     elif view == "upcoming":
         end = day_start + timedelta(days=7)
         query = query.where(
-            Task.status.notin_(("done", "cancelled")),
+            Task.status.in_(ACTIVE),
             Task.due_at >= iso(day_start),
             Task.due_at < iso(end),
         )
     elif view == "anytime":
-        query = query.where(Task.status.in_(("todo", "in_progress")), Task.due_at.is_(None))
+        query = query.where(Task.status.in_(ACTIVE), Task.due_at.is_(None))
     elif view == "waiting":
-        query = query.where(Task.status == "waiting")
+        query = query.where(Task.status == "review")
     elif view == "done":
         cutoff = now - timedelta(days=30)
         query = query.where(Task.status == "done", Task.completed_at >= iso(cutoff))
@@ -471,7 +490,7 @@ def list_tasks(
     rows = list(session.scalars(query).all())
     rows.sort(
         key=lambda t: (
-            0 if t.status in ("inbox", "todo", "in_progress") else 1,
+            STATUS_ORDER.get(t.status, 9),
             PRIORITY_RANK.get(t.priority, 4),
             t.due_at or "9999",
             t.sort_order,
@@ -483,17 +502,22 @@ def list_tasks(
 
 def board_payload(session: Session, tasks: list[Task]) -> dict:
     columns = [
-        ("todo", "To do"),
-        ("in_progress", "In progress"),
-        ("waiting", "Waiting"),
+        ("backlog", "Backlog"),
+        ("research", "Research"),
+        ("sprint", "Sprint"),
+        ("review", "Review"),
         ("done", "Done"),
     ]
+    legacy = {
+        "backlog": {"backlog", "inbox", "todo"},
+        "research": {"research"},
+        "sprint": {"sprint", "in_progress"},
+        "review": {"review", "waiting"},
+        "done": {"done"},
+    }
     result = []
     for key, label in columns:
-        if key == "todo":
-            items = [t for t in tasks if t.status in ("inbox", "todo")]
-        else:
-            items = [t for t in tasks if t.status == key]
+        items = [t for t in tasks if t.status in legacy[key]]
         result.append(
             {"key": key, "label": label, "tasks": [task_payload(session, t) for t in items]}
         )
