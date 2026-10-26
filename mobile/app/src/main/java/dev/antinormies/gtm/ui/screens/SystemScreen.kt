@@ -12,18 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,24 +29,8 @@ import dev.antinormies.gtm.ui.theme.GtmColors
 
 @Composable
 fun SystemScreen(state: UiState, viewModel: MainViewModel) {
-    var confirmUnpair by remember { mutableStateOf(false) }
     val usage = state.usage
     val health = state.health
-
-    if (confirmUnpair) {
-        AlertDialog(
-            onDismissRequest = { confirmUnpair = false },
-            title = { Text("Unpair this phone?") },
-            text = { Text("The device token will be revoked. You can pair again with a new code.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmUnpair = false
-                    viewModel.unpair()
-                }) { Text("Unpair", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text("Cancel") } }
-        )
-    }
 
     Column(
         Modifier
@@ -132,8 +109,6 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick = { viewModel.loadSystem() }, modifier = Modifier.fillMaxWidth()) { Text("Refresh diagnostics") }
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = { confirmUnpair = true }, modifier = Modifier.fillMaxWidth()) { Text("Unpair this phone") }
         }
 
         Spacer(Modifier.height(18.dp))

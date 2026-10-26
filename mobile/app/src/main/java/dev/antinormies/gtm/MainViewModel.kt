@@ -23,7 +23,6 @@ data class UiState(
     val paired: Boolean = false,
     val loading: Boolean = false,
     val busy: Boolean = false,
-    val serverUrl: String = "http://127.0.0.1:8765",
     val tab: Tab = Tab.SPEAK,
     val tasks: List<Task> = emptyList(),
     val projects: List<Project> = emptyList(),
@@ -44,13 +43,11 @@ class MainViewModel(
     private val repository: GtmRepository,
     private val tts: TtsPlayer
 ) : ViewModel() {
-    private val _state = MutableStateFlow(
-        UiState(paired = repository.hasToken, serverUrl = repository.serverUrl)
-    )
+    private val _state = MutableStateFlow(UiState(paired = repository.hasToken))
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     init {
-        if (repository.hasToken) refresh()
+        if (repository.hasToken) refresh() else autoPair()
     }
 
     fun setTab(tab: Tab) {
@@ -58,25 +55,22 @@ class MainViewModel(
         if (tab == Tab.SYSTEM) loadSystem()
     }
 
-    fun setServerUrl(url: String) {
-        repository.setServerUrl(url)
-        _state.update { it.copy(serverUrl = repository.serverUrl) }
+    fun retryConnection() {
+        if (repository.hasToken) refresh() else autoPair()
     }
 
-    fun pair(code: String, deviceName: String) {
-        if (code.isBlank()) {
-            _state.update { it.copy(error = "Enter the six-digit pairing code.") }
-            return
-        }
+    private fun autoPair() {
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
-            runCatching { repository.pair(code, deviceName) }
+            runCatching { repository.autoPair() }
                 .onSuccess { ok ->
                     if (ok) {
                         _state.update { it.copy(paired = true, loading = false, error = null) }
                         refresh()
                     } else {
-                        _state.update { it.copy(loading = false, error = "Pairing failed.") }
+                        _state.update {
+                            it.copy(loading = false, error = "Could not provision a device token.")
+                        }
                     }
                 }
                 .onFailure { fail(it) }
@@ -347,16 +341,6 @@ class MainViewModel(
                     toast("Search index rebuilt.")
                 }
                 .onFailure { fail(it) }
-        }
-    }
-
-    fun unpair() {
-        _state.update { it.copy(busy = true) }
-        viewModelScope.launch {
-            repository.unpair()
-            _state.update {
-                it.copy(paired = false, busy = false, tasks = emptyList(), selected = null, proposal = null)
-            }
         }
     }
 

@@ -11,22 +11,16 @@ class GtmRepository(
     private val api: ApiClient,
     private val store: TokenStore
 ) {
-    val serverUrl: String get() = store.serverUrl
     val hasToken: Boolean get() = !store.token.isNullOrBlank()
-
-    fun setServerUrl(value: String) {
-        store.serverUrl = value
-        api.baseUrl = store.serverUrl
-    }
 
     fun setToken(value: String?) {
         store.token = value
         api.token = value
     }
 
-    suspend fun pair(code: String, deviceName: String): Boolean = withContext(Dispatchers.IO) {
-        val body = JSONObject().put("code", code).put("device_name", deviceName)
-        val response = api.request("POST", "/api/auth/pair", body)
+    suspend fun autoPair(): Boolean = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("device_name", store.deviceName)
+        val response = api.request("POST", "/api/auth/auto-pair", body)
         val token = response?.optString("token").orEmpty()
         if (token.isBlank()) return@withContext false
         setToken(token)
@@ -162,12 +156,6 @@ class GtmRepository(
     suspend fun rebuildSearch(): Boolean = withContext(Dispatchers.IO) {
         api.request("POST", "/api/maintenance/rebuild-search")
         true
-    }
-
-    suspend fun unpair() = withContext(Dispatchers.IO) {
-        runCatching { api.request("POST", "/api/auth/revoke") }
-        setToken(null)
-        store.clear()
     }
 
     private fun url(value: String): String = URLEncoder.encode(value, "UTF-8")

@@ -13,7 +13,7 @@
       }
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="/static/css/app.css?v=20261024h">
+  <link rel="stylesheet" href="/static/css/app.css?v=20261024i">
 </head>
 <body data-view="{{ view }}" data-project-id="{{ project_id }}">
 
@@ -165,11 +165,9 @@
             <div class="kv"><span>Voice</span><strong>{{ 'Enabled' if settings.voice_enabled else 'Disabled' }}</strong></div>
           </div>
           <div class="settings-card">
-            <p class="eyebrow">Phone pairing</p>
-            <h2>Pair an Android device</h2>
-            <p class="muted">Generate a six-digit code, then enter it in the GTM Android app.</p>
-            <button class="btn btn-primary" id="pairing-code-btn">Generate code</button>
-            <div class="pairing-code" id="pairing-code" hidden></div>
+            <p class="eyebrow">Devices</p>
+            <h2>Paired devices</h2>
+            <p class="muted">The Android app provisions itself on first launch.</p>
             <div class="device-list" id="device-list"></div>
           </div>
           <div class="settings-card">
@@ -216,6 +214,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="/static/js/app.js?v=20261024h"></script>
+  <script src="/static/js/app.js?v=20261024i"></script>
 </body>
 </html>

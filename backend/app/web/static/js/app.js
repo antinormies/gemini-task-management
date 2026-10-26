@@ -544,14 +544,6 @@
       });
     });
   }
-  function generateCode() {
-    api("/api/auth/pairing-code", { method: "POST" }).then(function (data) {
-      var el = $("#pairing-code");
-      el.hidden = false;
-      el.textContent = data.code;
-      toast("Pairing code valid for 5 minutes");
-    }).catch(function (err) { toast(err.message, true); });
-  }
   function backup() {
     api("/api/maintenance/backup", { method: "POST" }).then(function (data) {
       $("#maintenance-note").textContent = "Backup written to " + data.path + " (" + Math.round(data.bytes / 1024) + " KB)";
@@ -638,7 +630,6 @@
   $("#command-form").addEventListener("submit", submitCommand);
   $("#focus-command").addEventListener("click", function () { $("#command-input").focus(); });
   $("#quick-add-btn").addEventListener("click", openQuickAdd);
-  $("#pairing-code-btn").addEventListener("click", generateCode);
   $("#backup-btn").addEventListener("click", backup);
   $("#rebuild-btn").addEventListener("click", rebuild);
   function openProjectDialog() {
