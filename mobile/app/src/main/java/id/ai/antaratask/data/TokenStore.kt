@@ -1,6 +1,7 @@
 package id.ai.antaratask.data
 
 import android.content.Context
+import id.ai.antaratask.BuildConfig
 import android.os.Build
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -23,7 +24,9 @@ class TokenStore(context: Context) {
     }
 
     var serverUrl: String
-        get() = prefs.getString("server_url", "http://127.0.0.1:8765") ?: "http://127.0.0.1:8765"
+        get() = prefs.getString("server_url", BuildConfig.GTM_BASE_URL)
+            ?.takeUnless { it.startsWith("http://127.0.0.1") || it.startsWith("http://localhost") }
+            ?: BuildConfig.GTM_BASE_URL
         set(value) = prefs.edit().putString("server_url", value.trim().trimEnd('/')).apply()
 
     var token: String?

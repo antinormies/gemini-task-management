@@ -50,6 +50,28 @@ def test_auto_pair_rejects_non_loopback(settings):
         assert r.status_code == 403
 
 
+def test_auto_pair_accepts_bootstrap_key_through_proxy(settings):
+    bootstrap = settings.model_copy(update={"auto_pair_key": "test-bootstrap-key"})
+    application = create_app(bootstrap)
+    with TestClient(application, client=("203.0.113.10", 5555)) as remote:
+        r = remote.post(
+            "/api/auth/auto-pair",
+            json={"device_name": "Production phone"},
+            headers={"X-Auto-Pair-Key": "test-bootstrap-key"},
+        )
+        assert r.status_code == 200, r.text
+        token = r.json()["token"]
+        me = remote.get("/api/auth/me", headers={"Authorization": "Bearer " + token})
+        assert me.status_code == 200
+    with TestClient(application, client=("203.0.113.10", 5555)) as remote:
+        r = remote.post(
+            "/api/auth/auto-pair",
+            json={"device_name": "Wrong key"},
+            headers={"X-Auto-Pair-Key": "wrong"},
+        )
+        assert r.status_code == 403
+
+
 def test_auto_pair_rejects_proxied_requests(settings):
     application = create_app(settings)
     with TestClient(application, client=("127.0.0.1", 5555)) as local:
