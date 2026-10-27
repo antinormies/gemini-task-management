@@ -46,16 +46,27 @@ def pair_device(
         raise ValidationError("Pairing code has expired")
     if row.attempt_count >= settings.pairing_max_attempts:
         raise ValidationError("Too many pairing attempts; generate a new code")
+    token, device = _create_device(session, settings, device_name)
+    row.used_at = now_iso()
+    return token, device
+
+
+def _create_device(session: Session, settings: Settings, device_name: str) -> tuple[str, Device]:
     token = new_token()
     device = Device(
         name=(device_name.strip() or "Android phone")[:120],
         token_hash=hmac_hex(token, settings.secret_key),
         token_prefix=token_prefix(token),
     )
-    row.used_at = now_iso()
     session.add(device)
     session.flush()
     return token, device
+
+
+def auto_pair_device(session: Session, settings: Settings, device_name: str) -> tuple[str, Device]:
+    if not settings.secret_key:
+        raise ValidationError("GTM_SECRET_KEY is empty; automatic provisioning is disabled")
+    return _create_device(session, settings, device_name)
 
 
 def authenticate(session: Session, settings: Settings, token: str) -> Device:

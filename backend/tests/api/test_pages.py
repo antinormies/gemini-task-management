@@ -8,4 +8,4 @@ def test_pages_and_health(client):
     for path in ["/", "/today", "/inbox", "/settings"]:
         r = client.get(path)
         assert r.status_code == 200, path
-        assert "GTM" in r.text
+        assert "call task ai" in r.text.lower()

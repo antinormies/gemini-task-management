@@ -50,6 +50,10 @@ class PairRequest(BaseModel):
     device_name: str = "Android phone"
 
 
+class AutoPairRequest(BaseModel):
+    device_name: str = "Android phone"
+
+
 class TextInterpretRequest(BaseModel):
     text: str
     view: str = "today"

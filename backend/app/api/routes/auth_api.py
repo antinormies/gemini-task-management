@@ -1,15 +1,48 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from ...models import Device
 from ...services import auth as auth_service
 from ...services.errors import NotFound, ValidationError
 from ..deps import get_db, get_device, get_settings, verify_web_origin
-from ..models import PairRequest
+from ..models import AutoPairRequest, PairRequest
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+def _direct_loopback(request: Request) -> bool:
+    host = request.client.host if request.client else ""
+    if host not in ("127.0.0.1", "::1"):
+        return False
+    proxy_headers = ("x-forwarded-for", "tailscale-user-login", "cf-connecting-ip", "x-real-ip")
+    return not any(request.headers.get(header) for header in proxy_headers)
+
+
+@router.post("/auto-pair")
+def auto_pair(
+    body: AutoPairRequest,
+    request: Request,
+    session: Session = Depends(get_db),
+    settings=Depends(get_settings),
+):
+    """Provision a device token for the single-user app on loopback.
+
+    No pairing code: the backend is loopback-only and the app reaches it over
+    adb reverse. Requests that arrive through a proxy (Tailscale, Cloudflare)
+    are rejected so remote clients cannot self-provision.
+    """
+    if not _direct_loopback(request):
+        raise HTTPException(
+            status_code=403,
+            detail="Automatic provisioning is only available on the local loopback interface",
+        )
+    try:
+        token, device = auth_service.auto_pair_device(session, settings, body.device_name)
+        return {"token": token, "device": auth_service.device_payload(device)}
+    except ValidationError as exc:
+        raise HTTPException(status_code=503, detail=exc.message) from exc
 
 
 @router.post("/pairing-code", dependencies=[Depends(verify_web_origin)])

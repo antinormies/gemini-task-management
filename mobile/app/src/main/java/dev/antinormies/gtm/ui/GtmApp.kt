@@ -25,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -50,6 +52,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
@@ -57,6 +60,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import dev.antinormies.gtm.MainViewModel
 import dev.antinormies.gtm.Tab
+import dev.antinormies.gtm.UiState
 import dev.antinormies.gtm.VoiceState
 import dev.antinormies.gtm.ui.screens.ProposalSheet
 import dev.antinormies.gtm.ui.screens.QuickAddDialog
@@ -152,7 +156,7 @@ fun GtmApp(viewModel: MainViewModel) {
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     if (!state.paired) {
         SystemBars(darkIcons = !isDarkTheme)
-        PairingScreen(viewModel, state)
+        ConnectingScreen(state, viewModel::retryConnection)
         return
     }
 
@@ -214,6 +218,49 @@ fun GtmApp(viewModel: MainViewModel) {
                 showQuickAdd = false
             }
         )
+    }
+}
+
+@Composable
+private fun ConnectingScreen(state: UiState, onRetry: () -> Unit) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "CALL TASK AI",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(20.dp))
+            if (state.error == null) {
+                CircularProgressIndicator()
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    "Connecting to your local server…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                Text(
+                    "Can't reach the local server",
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    state.error ?: "Check that the server is running and adb reverse is set.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(18.dp))
+                Button(onClick = onRetry) { Text("Retry") }
+            }
+        }
     }
 }
 
