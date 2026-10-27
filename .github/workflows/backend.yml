@@ -95,6 +95,7 @@ jobs:
       GTM_ENV_FILE: ${{ secrets.GTM_ENV_FILE }}
       GTM_SECRET_KEY: ${{ secrets.GTM_SECRET_KEY }}
       GTM_AI_API_KEY: ${{ secrets.GTM_AI_API_KEY }}
+      GTM_AUTO_PAIR_KEY: ${{ secrets.GTM_AUTO_PAIR_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Install SSH key
@@ -143,6 +144,7 @@ jobs:
           GTM_PUBLIC_ORIGIN=https://antaratask.dream-team.works
           GTM_TIMEZONE=Asia/Jakarta
           GTM_SECRET_KEY=$SECRET
+          GTM_AUTO_PAIR_KEY=$GTM_AUTO_PAIR_KEY
           GTM_AI_ENABLED=true
           GTM_AI_BASE_URL=https://gateway.dream-team.works/v1/chat/stream
           GTM_AI_API_KEY=$GTM_AI_API_KEY

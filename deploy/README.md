@@ -26,6 +26,7 @@ so nothing persists after the job.
 | VPS_KNOWN_HOSTS | the two host-key lines below |
 | GTM_AI_API_KEY | app client plaintext key (required only when .env is missing) |
 | GTM_SECRET_KEY | long random secret (optional; generated if absent) |
+| GTM_AUTO_PAIR_KEY | optional Android production bootstrap key |
 | GTM_ENV_FILE | optional full .env override, multiline |
 
 If the server already has .env, the deploy leaves it untouched and does not
