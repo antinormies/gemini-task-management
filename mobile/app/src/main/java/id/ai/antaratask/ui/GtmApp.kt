@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui
+package id.ai.antaratask.ui
 
 import android.Manifest
 import android.app.Activity
@@ -58,18 +58,18 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import dev.antinormies.gtm.MainViewModel
-import dev.antinormies.gtm.Tab
-import dev.antinormies.gtm.UiState
-import dev.antinormies.gtm.VoiceState
-import dev.antinormies.gtm.ui.screens.ProposalSheet
-import dev.antinormies.gtm.ui.screens.QuickAddDialog
-import dev.antinormies.gtm.ui.screens.SpeakScreen
-import dev.antinormies.gtm.ui.screens.SystemScreen
-import dev.antinormies.gtm.ui.screens.TaskDetailSheet
-import dev.antinormies.gtm.ui.screens.TasksScreen
-import dev.antinormies.gtm.ui.theme.GtmColors
-import dev.antinormies.gtm.voice.SpeechController
+import id.ai.antaratask.MainViewModel
+import id.ai.antaratask.Tab
+import id.ai.antaratask.UiState
+import id.ai.antaratask.VoiceState
+import id.ai.antaratask.ui.screens.ProposalSheet
+import id.ai.antaratask.ui.screens.QuickAddDialog
+import id.ai.antaratask.ui.screens.SpeakScreen
+import id.ai.antaratask.ui.screens.SystemScreen
+import id.ai.antaratask.ui.screens.TaskDetailSheet
+import id.ai.antaratask.ui.screens.TasksScreen
+import id.ai.antaratask.ui.theme.GtmColors
+import id.ai.antaratask.voice.SpeechController
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -160,18 +160,18 @@ fun GtmApp(viewModel: MainViewModel) {
         return
     }
 
-    val darkStage = state.tab == Tab.SPEAK
-    SystemBars(darkIcons = !darkStage && !isDarkTheme)
+    val lightStage = state.tab == Tab.SPEAK
+    SystemBars(darkIcons = lightStage || !isDarkTheme)
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(if (darkStage) GtmColors.stage else MaterialTheme.colorScheme.background)
+            .background(if (lightStage) GtmColors.speakBg else MaterialTheme.colorScheme.background)
     ) {
         Scaffold(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbar) },
-            bottomBar = { GtmBottomBar(selected = state.tab, onSelect = viewModel::setTab, darkStage = darkStage) }
+            bottomBar = { GtmBottomBar(selected = state.tab, onSelect = viewModel::setTab, lightStage = lightStage) }
         ) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 when (state.tab) {
@@ -267,7 +267,7 @@ private fun ConnectingScreen(state: UiState, onRetry: () -> Unit) {
 private data class GtmTabItem(val tab: Tab, val label: String, val icon: ImageVector)
 
 @Composable
-private fun GtmBottomBar(selected: Tab, onSelect: (Tab) -> Unit, darkStage: Boolean) {
+private fun GtmBottomBar(selected: Tab, onSelect: (Tab) -> Unit, lightStage: Boolean) {
     val items = listOf(
         GtmTabItem(Tab.SPEAK, "Speak", Icons.Rounded.Mic),
         GtmTabItem(Tab.TASKS, "Tasks", Icons.Rounded.Dashboard),
@@ -278,10 +278,10 @@ private fun GtmBottomBar(selected: Tab, onSelect: (Tab) -> Unit, darkStage: Bool
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 8.dp)
             .navigationBarsPadding(),
-        color = if (darkStage) GtmColors.stageCard else MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = if (lightStage) Color.White.copy(alpha = 0.72f) else MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = RoundedCornerShape(26.dp),
-        tonalElevation = if (darkStage) 0.dp else 2.dp,
-        shadowElevation = if (darkStage) 0.dp else 10.dp
+        tonalElevation = if (lightStage) 0.dp else 2.dp,
+        shadowElevation = if (lightStage) 12.dp else 10.dp
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(6.dp),
@@ -291,16 +291,16 @@ private fun GtmBottomBar(selected: Tab, onSelect: (Tab) -> Unit, darkStage: Bool
                 val isSelected = selected == item.tab
                 val background by animateColorAsState(
                     targetValue = when {
-                        isSelected && darkStage -> GtmColors.wave.copy(alpha = 0.18f)
+                        isSelected && lightStage -> GtmColors.speakAccentSoft
                         isSelected -> MaterialTheme.colorScheme.primaryContainer
                         else -> Color.Transparent
                     },
                     label = "navBackground"
                 )
                 val contentColor = when {
-                    isSelected && darkStage -> GtmColors.wave
+                    isSelected && lightStage -> GtmColors.speakAccent
                     isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
-                    darkStage -> GtmColors.stageMuted
+                    lightStage -> GtmColors.speakMuted
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
                 Column(

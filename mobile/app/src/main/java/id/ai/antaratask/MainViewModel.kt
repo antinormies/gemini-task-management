@@ -1,15 +1,15 @@
-package dev.antinormies.gtm
+package id.ai.antaratask
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.antinormies.gtm.data.Device
-import dev.antinormies.gtm.data.GtmRepository
-import dev.antinormies.gtm.data.Health
-import dev.antinormies.gtm.data.Project
-import dev.antinormies.gtm.data.Proposal
-import dev.antinormies.gtm.data.Task
-import dev.antinormies.gtm.data.Usage
-import dev.antinormies.gtm.voice.TtsPlayer
+import id.ai.antaratask.data.Device
+import id.ai.antaratask.data.GtmRepository
+import id.ai.antaratask.data.Health
+import id.ai.antaratask.data.Project
+import id.ai.antaratask.data.Proposal
+import id.ai.antaratask.data.Task
+import id.ai.antaratask.data.Usage
+import id.ai.antaratask.voice.TtsPlayer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

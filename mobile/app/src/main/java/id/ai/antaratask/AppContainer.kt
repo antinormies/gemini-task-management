@@ -1,10 +1,10 @@
-package dev.antinormies.gtm
+package id.ai.antaratask
 
 import android.content.Context
-import dev.antinormies.gtm.data.ApiClient
-import dev.antinormies.gtm.data.GtmRepository
-import dev.antinormies.gtm.data.TokenStore
-import dev.antinormies.gtm.voice.TtsPlayer
+import id.ai.antaratask.data.ApiClient
+import id.ai.antaratask.data.GtmRepository
+import id.ai.antaratask.data.TokenStore
+import id.ai.antaratask.voice.TtsPlayer
 
 class AppContainer(context: Context) {
     val tokenStore = TokenStore(context)

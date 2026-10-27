@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui.screens
+package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,11 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import dev.antinormies.gtm.MainViewModel
-import dev.antinormies.gtm.UiState
-import dev.antinormies.gtm.data.Health
-import dev.antinormies.gtm.data.Usage
-import dev.antinormies.gtm.ui.theme.GtmColors
+import id.ai.antaratask.MainViewModel
+import id.ai.antaratask.UiState
+import id.ai.antaratask.data.Health
+import id.ai.antaratask.data.Usage
+import id.ai.antaratask.ui.theme.GtmColors
 
 @Composable
 fun SystemScreen(state: UiState, viewModel: MainViewModel) {

@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui.screens
+package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,13 +54,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import dev.antinormies.gtm.MainViewModel
-import dev.antinormies.gtm.UiState
-import dev.antinormies.gtm.data.Task
-import dev.antinormies.gtm.ui.components.EmptyState
-import dev.antinormies.gtm.ui.components.TaskCard
-import dev.antinormies.gtm.ui.components.TaskRow
-import dev.antinormies.gtm.ui.components.isOverdue
+import id.ai.antaratask.MainViewModel
+import id.ai.antaratask.UiState
+import id.ai.antaratask.data.Task
+import id.ai.antaratask.ui.components.EmptyState
+import id.ai.antaratask.ui.components.TaskCard
+import id.ai.antaratask.ui.components.TaskRow
+import id.ai.antaratask.ui.components.isOverdue
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter

@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui.components
+package id.ai.antaratask.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -28,8 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.antinormies.gtm.data.Task
-import dev.antinormies.gtm.ui.theme.GtmColors
+import id.ai.antaratask.data.Task
+import id.ai.antaratask.ui.theme.GtmColors
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId

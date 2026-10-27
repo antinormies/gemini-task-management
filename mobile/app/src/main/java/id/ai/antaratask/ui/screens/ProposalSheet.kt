@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui.screens
+package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,9 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import dev.antinormies.gtm.data.Proposal
-import dev.antinormies.gtm.ui.components.Pill
-import dev.antinormies.gtm.ui.theme.GtmColors
+import id.ai.antaratask.data.Proposal
+import id.ai.antaratask.ui.components.Pill
+import id.ai.antaratask.ui.theme.GtmColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

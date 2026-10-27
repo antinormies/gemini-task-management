@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.voice
+package id.ai.antaratask.voice
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
