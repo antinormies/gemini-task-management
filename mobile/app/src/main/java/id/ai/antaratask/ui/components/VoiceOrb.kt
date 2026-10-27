@@ -12,6 +12,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -23,14 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import id.ai.antaratask.VoiceState
@@ -60,7 +59,11 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
     val active = listening || thinking
 
     val activity by animateFloatAsState(
-        targetValue = if (active) 1f else 0f,
+        targetValue = when {
+            listening -> 1f
+            thinking -> 0.35f
+            else -> 0f
+        },
         animationSpec = tween(500),
         label = "activity"
     )
@@ -74,6 +77,16 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
     val colorB by animateColorAsState(targetPalette[1], tween(550), label = "colorB")
     val colorC by animateColorAsState(targetPalette[2], tween(550), label = "colorC")
     val palette = listOf(colorA, colorB, colorC)
+    val altPalette = when {
+        error -> listOf(Color(0xFFFF6B81), Color(0xFFFFB3C1), Color(0xFFFF8FA3))
+        captured -> listOf(Color(0xFF9FE8CE), Color(0xFF8FD9FF), Color.White)
+        else -> listOf(Color(0xFF8FD8FF), Color(0xFFFF9AD5), Color(0xFF8F7BFF))
+    }
+    val colorIntensity = when {
+        listening -> 0.85f
+        thinking -> 0.42f
+        else -> 0f
+    }
 
     val glowTint by animateColorAsState(
         targetValue = when {
@@ -117,7 +130,7 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
             tween(
                 durationMillis = when {
                     listening -> 5200
-                    thinking -> 4800
+                    thinking -> 14000
                     else -> 17000
                 },
                 easing = LinearEasing
@@ -157,11 +170,39 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
         ),
         label = "pulse"
     )
+    val zoom by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (listening) 1.085f else 1f,
+        animationSpec = infiniteRepeatable(
+            tween(650, easing = FastOutSlowInEasing),
+            RepeatMode.Reverse
+        ),
+        label = "zoom"
+    )
+    val colorCycle by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(
+                durationMillis = when {
+                    listening -> 800
+                    thinking -> 8000
+                    else -> 12000
+                },
+                easing = LinearEasing
+            ),
+            RepeatMode.Reverse
+        ),
+        label = "colorCycle"
+    )
 
     Box(
         modifier = modifier
             .graphicsLayer { translationX = shake.value * 14f }
-            .clickable {
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
                 onClick()
                 scope.launch {
                     burst.snapTo(1f)
@@ -173,9 +214,21 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
         Canvas(Modifier.fillMaxSize()) {
             val c = center
             val base = size.minDimension / 2f
-            val r = base * 0.74f * (1f + 0.008f * activity) * breath
+            val scale = when {
+                listening -> zoom
+                thinking -> 1f
+                else -> breath
+            }
+            val r = base * 0.74f * scale
+            val activePalette = palette.mapIndexed { index, color ->
+                lerp(color, altPalette[index], colorIntensity * colorCycle)
+            }
 
-            val haloPulse = 1f + 0.05f * activity * sinF(pulse * 2f * PI.toFloat())
+            val haloPulse = when {
+                listening -> 1f + 0.06f * sinF(pulse * 2f * PI.toFloat())
+                thinking -> 1f + 0.02f * sinF(phase * 0.8f)
+                else -> 1f
+            }
             val haloRadius = r * 1.5f * haloPulse
             drawCircle(
                 brush = Brush.radialGradient(
@@ -239,20 +292,6 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
                     style = Stroke(width = 1.5.dp.toPx())
                 )
             }
-            if (thinking) {
-                rotate(spin, pivot = c) {
-                    drawArc(
-                        color = GtmColors.speakAccent.copy(alpha = 0.75f),
-                        startAngle = 0f,
-                        sweepAngle = 72f,
-                        useCenter = false,
-                        topLeft = Offset(c.x - r * 1.07f, c.y - r * 1.07f),
-                        size = Size(r * 2.14f, r * 2.14f),
-                        style = Stroke(2.dp.toPx(), cap = StrokeCap.Round)
-                    )
-                }
-            }
-
             clipPath(Path().apply { addOval(Rect(c.x - r, c.y - r, c.x + r, c.y + r)) }) {
                 drawCircle(
                     brush = Brush.radialGradient(
@@ -269,7 +308,12 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
                 )
 
                 val drift = phase.toFloat()
-                val orbit = r * (0.02f + 0.09f * activity)
+                val diffusion = if (thinking) {
+                    (sinF(phase * 0.8f) * 0.5f + 0.5f)
+                } else {
+                    0f
+                }
+                val orbit = r * (0.02f + if (thinking) 0.025f else 0.09f * activity)
                 val orbitAngle = (
                     phase + spin.toFloat() * (PI.toFloat() / 180f) * 0.8f
                 ).toDouble()
@@ -292,18 +336,26 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
                         cosF((orbitAngle + index * 2.1).toFloat()) * orbit,
                         sinF((orbitAngle + index * 2.1).toFloat()) * orbit * 0.8f
                     )
-                    val color = palette[index]
+                    val color = activePalette[index]
+                    val blobRadius = r * (
+                        if (thinking) 0.95f + 0.3f * diffusion else 0.95f + 0.02f * activity
+                    )
+                    val blobAlpha = if (thinking) {
+                        0.5f + 0.18f * diffusion
+                    } else {
+                        0.78f + 0.17f * activity
+                    }
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                color.copy(alpha = 0.78f + 0.17f * activity),
+                                color.copy(alpha = blobAlpha),
                                 color.copy(alpha = 0.35f),
                                 Color.Transparent
                             ),
                             center = point,
-                            radius = r * (0.95f + 0.02f * activity)
+                            radius = blobRadius
                         ),
-                        radius = r * (0.95f + 0.02f * activity),
+                        radius = blobRadius,
                         center = point
                     )
                 }
@@ -332,7 +384,7 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
                 // A hint of depth at the bottom of the sphere.
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color.Transparent, palette[2].copy(alpha = 0.2f)),
+                        colors = listOf(Color.Transparent, activePalette[2].copy(alpha = 0.2f)),
                         center = c,
                         radius = r
                     ),
