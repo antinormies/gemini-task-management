@@ -42,7 +42,7 @@
 
 - `backend/.env` is local and ignored. It must contain a non-empty `GTM_SECRET_KEY`.
 - AI is a **single self provider**: the MemeChat Gateway completion endpoint (`GTM_AI_BASE_URL`), authenticated with `GTM_AI_API_KEY`, model `GTM_AI_MODEL` (`deepseek-v4.1-flash`). GTM has no direct Gemini/agy/OpenCode dependency.
-- Production gateway: `https://gateway.dream-team.works/v1/chat/stream` with the app-client `X-App-Client-Key` and `chat.premium`; no Firebase token is required. The 40-hex value shown in the backoffice is the SHA-1 digest, not the key — rotate to get the plaintext. See `docs/GATEWAY.md`.
+- Production gateway: `https://gateway.dream-team.works/v1/chat/stream` with the app-client `X-App-Client-Key` and `chat.standard`; no Firebase token is required. The 40-hex value shown in the backoffice is the SHA-1 digest, not the key — rotate to get the plaintext. See `docs/GATEWAY.md`.
 - Voice is transcript-only: the Android speech recognizer produces the text; the backend sends it to the same self provider. Never upload audio in v1.
 - The Android app auto-provisions a device token on first launch via loopback `POST /api/auth/auto-pair`; there is no pairing screen. The endpoint rejects proxied requests (Tailscale/Cloudflare headers).
 - Never print, commit, or log API keys, device tokens, or pairing codes.

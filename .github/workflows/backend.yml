@@ -1,0 +1,125 @@
+name: Backend CI/CD
+
+on:
+  pull_request:
+    branches: [development]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+      - "deploy/**"
+  push:
+    branches: [development, master]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+      - "deploy/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test:
+    name: Lint and test (PR)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir -e ".[dev]"
+      - name: Lint
+        run: |
+          ruff format --check .
+          ruff check .
+      - name: Test
+        run: pytest -q
+
+  build:
+    name: Build (push)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir -e ".[dev]"
+      - name: Lint
+        run: |
+          ruff format --check .
+          ruff check .
+      - name: Test
+        run: pytest -q
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps -w dist
+      - name: Remove build cache (development only)
+        if: github.ref == 'refs/heads/development'
+        run: |
+          rm -rf dist build .pytest_cache .ruff_cache
+          find . -type d -name __pycache__ -prune -exec rm -rf {} +
+          rm -rf "$HOME/.cache/pip"
+          echo "Build artifacts and caches removed."
+
+  deploy:
+    name: Deploy (master)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      APP_DIR: /home/deploy/antaratask/backend
+      SERVICE: antaratask-backend
+      PORT: "8765"
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT }}
+      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SSH key
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$VPS_SSH_KEY" > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+      - name: Ensure app directory
+        run: |
+          ssh -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "mkdir -p '$APP_DIR'"
+      - name: Sync backend
+        run: |
+          rsync -az --delete \
+            --exclude '.env' \
+            --exclude '.venv' \
+            --exclude 'data' \
+            --exclude '*.db' \
+            --exclude '__pycache__' \
+            --exclude '.pytest_cache' \
+            --exclude '.ruff_cache' \
+            --exclude 'dist' \
+            --exclude 'build' \
+            --exclude '*.egg-info' \
+            -e "ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -p $VPS_PORT" \
+            backend/ "$VPS_USER@$VPS_HOST:$APP_DIR/"
+      - name: Deploy
+        run: |
+          scp -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -P "$VPS_PORT" deploy/remote-deploy.sh "$VPS_USER@$VPS_HOST:/tmp/antaratask-remote-deploy.sh"
+          ssh -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "APP_DIR='$APP_DIR' SERVICE='$SERVICE' PORT='$PORT' bash /tmp/antaratask-remote-deploy.sh"

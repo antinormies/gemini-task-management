@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..ai.clients import AIError
-from ..ai.prompts import build_prompt, build_voice_prompt
+from ..ai.prompts import build_compact_prompt, build_prompt, build_voice_prompt
 from ..ai.schemas import CompleteTaskAction, Interpretation, UpdateChanges, UpdateTaskAction
 from ..ai.service import AIService
 from ..config import Settings
@@ -139,15 +139,26 @@ async def process_text_run(
         run.status = "running"
         run.started_at = now_iso()
         context = json.loads(run.context_json or "{}")
-        prompt = build_prompt(
-            settings,
-            run.input_text,
-            projects=context.get("projects", []),
-            selected_task=context.get("selected_task"),
-            current_project=context.get("current_project_id"),
-            now=now_utc(),
-            tasks=context.get("tasks", []),
-        )
+        if settings.ai_capability == "chat.standard":
+            prompt = build_compact_prompt(
+                settings,
+                run.input_text,
+                projects=context.get("projects", []),
+                selected_task=context.get("selected_task"),
+                current_project=context.get("current_project_id"),
+                now=now_utc(),
+                tasks=context.get("tasks", []),
+            )
+        else:
+            prompt = build_prompt(
+                settings,
+                run.input_text,
+                projects=context.get("projects", []),
+                selected_task=context.get("selected_task"),
+                current_project=context.get("current_project_id"),
+                now=now_utc(),
+                tasks=context.get("tasks", []),
+            )
     started = datetime.now()
     try:
         result = await ai_service.interpret(prompt)
@@ -225,15 +236,27 @@ async def interpret_voice(
         session.add(run)
         session.flush()
         run_id = run.id
-        prompt = build_voice_prompt(
-            settings,
-            transcript,
-            projects=context.get("projects", []),
-            selected_task=context.get("selected_task"),
-            current_project=context.get("current_project_id"),
-            now=now_utc(),
-            tasks=context.get("tasks", []),
-        )
+        if settings.ai_capability == "chat.standard":
+            prompt = build_compact_prompt(
+                settings,
+                transcript,
+                projects=context.get("projects", []),
+                selected_task=context.get("selected_task"),
+                current_project=context.get("current_project_id"),
+                now=now_utc(),
+                tasks=context.get("tasks", []),
+                source="voice transcript",
+            )
+        else:
+            prompt = build_voice_prompt(
+                settings,
+                transcript,
+                projects=context.get("projects", []),
+                selected_task=context.get("selected_task"),
+                current_project=context.get("current_project_id"),
+                now=now_utc(),
+                tasks=context.get("tasks", []),
+            )
     started = datetime.now()
     try:
         result = await ai_service.interpret(prompt)

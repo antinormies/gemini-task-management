@@ -6,12 +6,13 @@ GTM uses the MemeChat Gateway's **app-client chat stream**:
 | --- | --- |
 | `GTM_AI_BASE_URL` | `https://gateway.dream-team.works/v1/chat/stream` |
 | `GTM_AI_API_KEY` | the app client's plaintext key (sent as `X-App-Client-Key`) |
-| `GTM_AI_CAPABILITY` | `chat.premium` (4096-token output budget) |
+| `GTM_AI_CAPABILITY` | `chat.standard` (1024-token output budget) |
 | `GTM_AI_MODEL` | `deepseek-v4.1-flash` |
-| `GTM_AI_MAX_OUTPUT_TOKENS` | `4096` |
+| `GTM_AI_MAX_OUTPUT_TOKENS` | `1024` |
 
-`chat.standard` is capped at 1024 output tokens; reasoning often consumes
-that entire budget and returns no text, so GTM uses `chat.premium`.
+`chat.standard` is capped at 1024 output tokens. GTM therefore uses the
+compact parser prompt (`build_compact_prompt`) for this capability and
+retries once if the model returns reasoning-only text.
 
 No Firebase token is required. The app-client key is the app identity; the
 gateway only needs a Firebase UID if the client is configured to require one.
