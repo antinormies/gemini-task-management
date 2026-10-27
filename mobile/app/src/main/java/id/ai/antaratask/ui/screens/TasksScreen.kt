@@ -392,8 +392,8 @@ fun TasksScreen(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.inverseOnSurface,
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 14.dp)
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
                         .background(MaterialTheme.colorScheme.inverseSurface, RoundedCornerShape(99.dp))
                         .padding(horizontal = 14.dp, vertical = 7.dp)
                 )
