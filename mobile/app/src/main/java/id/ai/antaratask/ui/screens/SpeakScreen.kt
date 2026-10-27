@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -46,6 +49,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -75,6 +79,8 @@ private val SpeakSerif = TextStyle(
 @Composable
 fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
     var typedCommand by remember { mutableStateOf("") }
+    val density = LocalDensity.current
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
 
     val listening = state.voiceState == VoiceState.LISTENING
     val captured = state.voiceState == VoiceState.CAPTURED
@@ -112,6 +118,7 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .background(
                 Brush.verticalGradient(
                     listOf(
@@ -132,83 +139,85 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
                 .padding(top = 18.dp, bottom = 132.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "CALL TASK AI",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        letterSpacing = 2.2.sp,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = GtmColors.speakMuted
-                )
-                Spacer(Modifier.weight(1f))
-                Surface(
-                    color = Color.White.copy(alpha = 0.6f),
-                    shape = CircleShape,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.9f))
+            if (!imeVisible) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Text(
+                        "CALL TASK AI",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 2.2.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = GtmColors.speakMuted
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Surface(
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.9f))
                     ) {
-                        Box(Modifier.size(6.dp).background(pillDot, CircleShape))
-                        Spacer(Modifier.size(6.dp))
-                        Text(
-                            pill,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = GtmColors.speakMuted
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(Modifier.size(6.dp).background(pillDot, CircleShape))
+                            Spacer(Modifier.size(6.dp))
+                            Text(
+                                pill,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = GtmColors.speakMuted
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(22.dp))
-            VoiceOrb(
-                state = state.voiceState,
-                onClick = onOrb,
-                modifier = Modifier.fillMaxWidth(0.78f).aspectRatio(1f)
-            )
-            Spacer(Modifier.height(14.dp))
-
-            Text(
-                "Speak your ideas\nout loud",
-                style = SpeakSerif,
-                color = GtmColors.speakInk,
-                textAlign = TextAlign.Center
-            )
-            if (caption.isNotBlank()) {
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    caption,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = GtmColors.speakMuted,
-                    textAlign = TextAlign.Center,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                Spacer(Modifier.height(22.dp))
+                VoiceOrb(
+                    state = state.voiceState,
+                    onClick = onOrb,
+                    modifier = Modifier.fillMaxWidth(0.78f).aspectRatio(1f)
                 )
-            }
-            if (listening && state.transcript.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(14.dp))
+
                 Text(
-                    state.transcript,
-                    style = MaterialTheme.typography.bodyMedium,
+                    "Speak your ideas\nout loud",
+                    style = SpeakSerif,
                     color = GtmColors.speakInk,
-                    textAlign = TextAlign.Center,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
+                    textAlign = TextAlign.Center
                 )
-            }
+                if (caption.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        caption,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = GtmColors.speakMuted,
+                        textAlign = TextAlign.Center,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                }
+                if (listening && state.transcript.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        state.transcript,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = GtmColors.speakInk,
+                        textAlign = TextAlign.Center,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
 
-            if (showCapture) {
-                Spacer(Modifier.height(20.dp))
-                CaptureCard(state, viewModel)
-            } else if (error) {
-                Spacer(Modifier.height(20.dp))
-                ErrorCard(state.error ?: "Nothing was saved.", onOrb)
+                if (showCapture) {
+                    Spacer(Modifier.height(20.dp))
+                    CaptureCard(state, viewModel)
+                } else if (error) {
+                    Spacer(Modifier.height(20.dp))
+                    ErrorCard(state.error ?: "Nothing was saved.", onOrb)
+                }
             }
         }
 
@@ -219,6 +228,14 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
                 .padding(horizontal = 26.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (imeVisible) {
+                Text(
+                    "Type your command",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = GtmColors.speakMuted,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
             WritePill(
                 value = typedCommand,
                 onValueChange = { typedCommand = it },
@@ -231,16 +248,18 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
                     }
                 }
             )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Audio stays on your phone. Only the transcript is sent.",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    lineHeight = 14.sp
-                ),
-                color = GtmColors.speakMuted.copy(alpha = 0.75f),
-                textAlign = TextAlign.Center
-            )
+            if (!imeVisible) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Audio stays on your phone. Only the transcript is sent.",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp
+                    ),
+                    color = GtmColors.speakMuted.copy(alpha = 0.75f),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 

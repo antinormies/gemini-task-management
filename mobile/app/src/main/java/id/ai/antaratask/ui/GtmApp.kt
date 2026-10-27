@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -77,6 +80,8 @@ import java.util.Locale
 fun GtmApp(viewModel: MainViewModel) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val density = LocalDensity.current
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
     val snackbar = remember { SnackbarHostState() }
     var showQuickAdd by remember { mutableStateOf(false) }
     var voiceStart by remember { mutableLongStateOf(0L) }
@@ -174,7 +179,11 @@ fun GtmApp(viewModel: MainViewModel) {
         Scaffold(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbar) },
-            bottomBar = { GtmBottomBar(selected = state.tab, onSelect = viewModel::setTab, lightStage = lightStage) }
+            bottomBar = {
+                if (!imeVisible) {
+                    GtmBottomBar(selected = state.tab, onSelect = viewModel::setTab, lightStage = lightStage)
+                }
+            }
         ) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 when (state.tab) {
