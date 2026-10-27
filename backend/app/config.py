@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     public_origin: str = "http://127.0.0.1:8765"
     trust_proxy_headers: bool = True
     secret_key: str = ""
+    auto_pair_key: str = ""
     pairing_ttl_seconds: int = 300
     pairing_max_attempts: int = 5
     log_level: str = "INFO"

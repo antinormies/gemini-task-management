@@ -24,6 +24,13 @@ so nothing persists after the job.
 | VPS_PORT | 22 |
 | VPS_SSH_KEY | private key matching github-actions-deploy |
 | VPS_KNOWN_HOSTS | the two host-key lines below |
+| GTM_AI_API_KEY | app client plaintext key (required only when .env is missing) |
+| GTM_SECRET_KEY | long random secret (optional; generated if absent) |
+| GTM_AUTO_PAIR_KEY | optional Android production bootstrap key |
+| GTM_ENV_FILE | optional full .env override, multiline |
+
+If the server already has .env, the deploy leaves it untouched and does not
+require GTM_AI_API_KEY.
 
     139.99.88.23 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNBetaOdE0+KO67iSgP3db8Ctc0gC8yRU5fiEdlWOkR
     139.99.88.23 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDEZj1/gP4ujyrypiOVZU9/loisTH23JHeR5upHG/v3l6HB3TMYQosD/NYgfaCK6lT0Wu9lA6ldrAQZoaWSN4asxDGNa1LlzFdyWRwsnSeoOAHRf1FJp+RE1m8iUAqoEjqMojQLl71N1tuhVFUsdReej2R7xTenpkLtz0jV2Q2vM6/WzYlPgKcJnd6pypWZgbt0ZqdmP3AKmAtUAfByQ7rAII/5bIwf3D7tT1ZcFhszGBAKeo/eUYdZ1Z7wshbmlF4ipucGtBwAHkMGD++oWJ9JcPy2ndX0yHAkVlzLQpaojBAQfMKENSMq3vF3aM4cdN7gFd1WLhGSk4dE6UMW9w161QcVjspHWROYjniRnn1mP6VaCasGEuZAfqOY8bNAlW7/xhmvrDox8ZxatYdcbxKStJ6cA7TFK3sR6gNjZoMabpY3pddJLiw9ZgzXtq9a0P7NXdnKZ4yi+zEYLSrO4F7nV807pYyptuzOH4zxRPqbNzGONP4VXI3ktSCmx1s9f+c=
@@ -37,15 +44,17 @@ The workflow assumes:
 - Backend on 127.0.0.1:8765
 - Public hostname antaratask.dream-team.works reverse-proxied to that port
 
-1. Create the app directory and .env:
+1. The master deploy bootstraps .env if it is missing, using the
+   GTM_AI_API_KEY (and optional GTM_SECRET_KEY / GTM_ENV_FILE) secrets.
+   It is excluded from rsync and preserved on later deploys.
+
+   To create it manually instead:
 
         mkdir -p /home/deploy/antaratask/backend
         cd /home/deploy/antaratask/backend
         cp deploy/env.example .env
         # fill GTM_SECRET_KEY and GTM_AI_API_KEY (the app client's plaintext key)
         chmod 600 .env
-
-   .env is excluded from rsync and is never overwritten by CI.
 
 2. Install the systemd unit (as root):
 

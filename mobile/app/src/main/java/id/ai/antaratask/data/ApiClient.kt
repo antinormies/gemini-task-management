@@ -1,5 +1,6 @@
 package id.ai.antaratask.data
 
+import id.ai.antaratask.BuildConfig
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -11,8 +12,9 @@ import java.util.concurrent.TimeUnit
 class ApiException(val status: Int, message: String) : IOException(message)
 
 class ApiClient {
-    var baseUrl: String = "http://127.0.0.1:8765"
+    var baseUrl: String = BuildConfig.GTM_BASE_URL
     var token: String? = null
+    var autoPairKey: String = BuildConfig.GTM_AUTO_PAIR_KEY
 
     private val jsonType = "application/json; charset=utf-8".toMediaType()
     private val client = OkHttpClient.Builder()
@@ -28,6 +30,9 @@ class ApiClient {
             .header("X-GTM-Request", "1")
             .header("X-GTM-Client", "android/0.1")
         token?.let { builder.header("Authorization", "Bearer " + it) }
+        if (path == "/api/auth/auto-pair" && autoPairKey.isNotBlank()) {
+            builder.header("X-Auto-Pair-Key", autoPairKey)
+        }
         val payload = body?.toString()?.toRequestBody(jsonType)
         // OkHttp rejects POST/PUT/PATCH with a null body ("method POST must have
         // a request body"), which silently broke every body-less action the app

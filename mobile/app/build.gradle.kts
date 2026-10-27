@@ -7,6 +7,9 @@ android {
     namespace = "id.ai.antaratask"
     compileSdk = 36
 
+    val autoPairKey = (project.findProperty("GTM_AUTO_PAIR_KEY") as String?) ?: ""
+    val escapedAutoPairKey = autoPairKey.replace("\\", "\\\\").replace("\"", "\\\"")
+
     defaultConfig {
         applicationId = "id.ai.antaratask"
         minSdk = 31
@@ -14,15 +17,13 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "GTM_BASE_URL", "\"https://antaratask.dream-team.works\"")
+        buildConfigField("String", "GTM_AUTO_PAIR_KEY", "\"$escapedAutoPairKey\"")
     }
 
     buildTypes {
-        debug {
-            buildConfigField("String", "GTM_BASE_URL", "\"http://127.0.0.1:8765\"")
-        }
         release {
             isMinifyEnabled = false
-            buildConfigField("String", "GTM_BASE_URL", "\"https://localhost\"")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

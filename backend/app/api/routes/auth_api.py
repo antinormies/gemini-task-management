@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hmac
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -20,6 +22,14 @@ def _direct_loopback(request: Request) -> bool:
     return not any(request.headers.get(header) for header in proxy_headers)
 
 
+def _auto_pair_allowed(request: Request, settings) -> bool:
+    if _direct_loopback(request):
+        return True
+    configured = settings.auto_pair_key.strip()
+    provided = request.headers.get("x-auto-pair-key", "")
+    return bool(configured) and hmac.compare_digest(provided, configured)
+
+
 @router.post("/auto-pair")
 def auto_pair(
     body: AutoPairRequest,
@@ -27,16 +37,16 @@ def auto_pair(
     session: Session = Depends(get_db),
     settings=Depends(get_settings),
 ):
-    """Provision a device token for the single-user app on loopback.
+    """Provision a device token for the single-user app.
 
-    No pairing code: the backend is loopback-only and the app reaches it over
-    adb reverse. Requests that arrive through a proxy (Tailscale, Cloudflare)
-    are rejected so remote clients cannot self-provision.
+    Loopback requests (adb reverse) work without a key. A production app can
+    present X-Auto-Pair-Key matching GTM_AUTO_PAIR_KEY to provision through the
+    public host; without either, remote clients cannot self-provision.
     """
-    if not _direct_loopback(request):
+    if not _auto_pair_allowed(request, settings):
         raise HTTPException(
             status_code=403,
-            detail="Automatic provisioning is only available on the local loopback interface",
+            detail="Automatic provisioning requires loopback or a valid X-Auto-Pair-Key",
         )
     try:
         token, device = auth_service.auto_pair_device(session, settings, body.device_name)
