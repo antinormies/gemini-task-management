@@ -1,9 +1,12 @@
 package id.ai.antaratask.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -12,19 +15,27 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import id.ai.antaratask.VoiceState
 import id.ai.antaratask.ui.theme.GtmColors
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -33,9 +44,12 @@ private fun sinF(value: Float): Float = sin(value.toDouble()).toFloat()
 private fun cosF(value: Float): Float = cos(value.toDouble()).toFloat()
 
 /**
- * The luminous pastel sphere from the voice reference: a slow-breathing glass
- * orb with drifting aurora blobs, a bright rim, and expanding rings while
- * listening. Everything is drawn on a Compose Canvas; no images.
+ * The luminous pastel sphere from the voice reference.
+ *
+ * Idle: a slow-breathing glass orb. Listening: the aurora accelerates, the
+ * halo pulses, and rings expand. Thinking: a faster swirl plus a rotating arc.
+ * Error: the palette and glow shift to rose, with a short shake. Tapping fires
+ * a quick expanding burst before the voice state changes.
  */
 @Composable
 fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -43,15 +57,81 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
     val thinking = state == VoiceState.THINKING
     val captured = state == VoiceState.CAPTURED
     val error = state == VoiceState.ERROR
+    val active = listening || thinking
+
+    val activity by animateFloatAsState(
+        targetValue = if (active) 1f else 0f,
+        animationSpec = tween(500),
+        label = "activity"
+    )
+
+    val targetPalette = when {
+        error -> listOf(Color(0xFFFF7A93), Color(0xFFFF4D6D), Color(0xFFFFB3C1))
+        captured -> listOf(GtmColors.orbMint, Color(0xFF8FD9FF), Color.White)
+        else -> listOf(Color(0xFFFF8FC8), Color(0xFF7FB0FF), Color(0xFFA47BFF))
+    }
+    val colorA by animateColorAsState(targetPalette[0], tween(550), label = "colorA")
+    val colorB by animateColorAsState(targetPalette[1], tween(550), label = "colorB")
+    val colorC by animateColorAsState(targetPalette[2], tween(550), label = "colorC")
+    val palette = listOf(colorA, colorB, colorC)
+
+    val glowTint by animateColorAsState(
+        targetValue = when {
+            error -> Color(0xFFFF7A93)
+            captured -> Color(0xFF9FE8CE)
+            else -> Color(0xFFFFD7EC)
+        },
+        animationSpec = tween(600),
+        label = "glowTint"
+    )
+    val rimTint by animateColorAsState(
+        targetValue = when {
+            error -> Color(0xFFFF9FB0)
+            captured -> Color(0xFFB7F0DA)
+            else -> Color.White
+        },
+        animationSpec = tween(600),
+        label = "rimTint"
+    )
+
+    val burst = remember { Animatable(0f) }
+    val shake = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(state) {
+        if (state == VoiceState.ERROR) {
+            shake.snapTo(0f)
+            shake.animateTo(1f, tween(70))
+            shake.animateTo(-1f, tween(70))
+            shake.animateTo(1f, tween(70))
+            shake.animateTo(-1f, tween(70))
+            shake.animateTo(0f, tween(120))
+        }
+    }
 
     val transition = rememberInfiniteTransition(label = "voice-orb")
     val phase by transition.animateFloat(
         initialValue = 0f,
         targetValue = (2 * PI).toFloat(),
         animationSpec = infiniteRepeatable(
-            tween(if (thinking) 9000 else 17000, easing = LinearEasing)
+            tween(
+                durationMillis = when {
+                    listening -> 5200
+                    thinking -> 4800
+                    else -> 17000
+                },
+                easing = LinearEasing
+            )
         ),
         label = "phase"
+    )
+    val spin by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            tween(if (active) 12000 else 60000, easing = LinearEasing)
+        ),
+        label = "spin"
     )
     val breath by transition.animateFloat(
         initialValue = 0.985f,
@@ -66,56 +146,109 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            tween(if (listening) 1500 else 2800, easing = LinearEasing)
+            tween(
+                durationMillis = when {
+                    listening -> 1300
+                    error -> 900
+                    else -> 2600
+                },
+                easing = LinearEasing
+            )
         ),
         label = "pulse"
     )
 
     Box(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier
+            .graphicsLayer { translationX = shake.value * 14f }
+            .clickable {
+                onClick()
+                scope.launch {
+                    burst.snapTo(1f)
+                    burst.animateTo(0f, tween(650, easing = FastOutSlowInEasing))
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
         Canvas(Modifier.fillMaxSize()) {
             val c = center
             val base = size.minDimension / 2f
-            val r = base * 0.74f * breath
+            val r = base * 0.74f * (1f + 0.008f * activity) * breath
 
-            // Soft halo around the glass sphere.
+            val haloPulse = 1f + 0.05f * activity * sinF(pulse * 2f * PI.toFloat())
+            val haloRadius = r * 1.5f * haloPulse
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
                         Color.White.copy(alpha = 0.95f),
-                        Color(0xFFFFD7EC).copy(alpha = 0.35f),
-                        GtmColors.orbLavender.copy(alpha = 0.18f),
+                        glowTint.copy(alpha = 0.32f + 0.18f * activity),
+                        glowTint.copy(alpha = 0.12f),
                         Color.Transparent
                     ),
                     center = c,
-                    radius = r * 1.55f
+                    radius = haloRadius
                 ),
-                radius = r * 1.55f,
+                radius = haloRadius,
                 center = c
             )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFFFFC2E2).copy(alpha = 0.22f),
-                        Color.Transparent
+            if (error) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(glowTint.copy(alpha = 0.4f), Color.Transparent),
+                        center = c,
+                        radius = r * 1.35f
                     ),
-                    center = Offset(c.x - r * 0.4f, c.y - r * 0.45f),
-                    radius = r * 0.85f
-                ),
-                radius = r * 0.85f,
-                center = Offset(c.x - r * 0.4f, c.y - r * 0.45f)
-            )
+                    radius = r * 1.35f,
+                    center = c
+                )
+            }
+
+            val tapBurst = burst.value
+            if (tapBurst > 0.01f) {
+                drawCircle(
+                    color = Color.White.copy(alpha = tapBurst * 0.5f),
+                    radius = r * (1f + (1f - tapBurst) * 0.45f),
+                    center = c,
+                    style = Stroke(2.dp.toPx())
+                )
+                drawCircle(
+                    color = glowTint.copy(alpha = tapBurst * 0.3f),
+                    radius = r * (0.9f + (1f - tapBurst) * 0.3f),
+                    center = c,
+                    style = Stroke(6.dp.toPx())
+                )
+            }
 
             if (listening) {
                 repeat(2) { index ->
                     val progress = (pulse + index * 0.5f) % 1f
                     drawCircle(
-                        color = Color.White.copy(alpha = (1f - progress) * 0.5f),
-                        radius = r * (1.02f + progress * 0.24f),
+                        color = Color.White.copy(alpha = (1f - progress) * 0.55f),
+                        radius = r * (1.02f + progress * 0.26f),
                         center = c,
-                        style = Stroke(width = 1.2.dp.toPx())
+                        style = Stroke(width = 1.3.dp.toPx())
+                    )
+                }
+            }
+            if (error) {
+                val progress = pulse % 1f
+                drawCircle(
+                    color = glowTint.copy(alpha = (1f - progress) * 0.5f),
+                    radius = r * (1.02f + progress * 0.22f),
+                    center = c,
+                    style = Stroke(width = 1.5.dp.toPx())
+                )
+            }
+            if (thinking) {
+                rotate(spin, pivot = c) {
+                    drawArc(
+                        color = GtmColors.speakAccent.copy(alpha = 0.75f),
+                        startAngle = 0f,
+                        sweepAngle = 72f,
+                        useCenter = false,
+                        topLeft = Offset(c.x - r * 1.07f, c.y - r * 1.07f),
+                        size = Size(r * 2.14f, r * 2.14f),
+                        style = Stroke(2.dp.toPx(), cap = StrokeCap.Round)
                     )
                 }
             }
@@ -135,16 +268,12 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
                     center = c
                 )
 
-                val palette = when {
-                    error -> listOf(GtmColors.orbRose, GtmColors.orbPink, GtmColors.orbLavender)
-                    captured -> listOf(GtmColors.orbMint, GtmColors.orbBlue, Color.White)
-                    else -> listOf(Color(0xFFFF8FC8), Color(0xFF7FB0FF), Color(0xFFA47BFF))
-                }
-
-                // Fixed color fields drift gently instead of rotating into a
-                // uniform lavender wash.
                 val drift = phase.toFloat()
-                val points = listOf(
+                val orbit = r * (0.02f + 0.09f * activity)
+                val orbitAngle = (
+                    phase + spin.toFloat() * (PI.toFloat() / 180f) * 0.8f
+                ).toDouble()
+                val basePoints = listOf(
                     Offset(
                         c.x - r * 0.34f + sinF(drift * 0.5f) * r * 0.06f,
                         c.y - r * 0.34f + cosF(drift * 0.4f) * r * 0.05f
@@ -158,19 +287,23 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
                         c.y + r * 0.42f + cosF(drift * 0.4f) * r * 0.03f
                     )
                 )
-                points.forEachIndexed { index, point ->
+                basePoints.forEachIndexed { index, basePoint ->
+                    val point = basePoint + Offset(
+                        cosF((orbitAngle + index * 2.1).toFloat()) * orbit,
+                        sinF((orbitAngle + index * 2.1).toFloat()) * orbit * 0.8f
+                    )
                     val color = palette[index]
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                color.copy(alpha = if (listening) 0.95f else 0.85f),
+                                color.copy(alpha = 0.78f + 0.17f * activity),
                                 color.copy(alpha = 0.35f),
                                 Color.Transparent
                             ),
                             center = point,
-                            radius = r * 0.95f
+                            radius = r * (0.95f + 0.02f * activity)
                         ),
-                        radius = r * 0.95f,
+                        radius = r * (0.95f + 0.02f * activity),
                         center = point
                     )
                 }
@@ -199,7 +332,7 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
                 // A hint of depth at the bottom of the sphere.
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color.Transparent, GtmColors.orbViolet.copy(alpha = 0.2f)),
+                        colors = listOf(Color.Transparent, palette[2].copy(alpha = 0.2f)),
                         center = c,
                         radius = r
                     ),
@@ -209,25 +342,25 @@ fun VoiceOrb(state: VoiceState, onClick: () -> Unit, modifier: Modifier = Modifi
             }
 
             drawCircle(
-                color = Color.White.copy(alpha = 0.95f),
+                color = rimTint.copy(alpha = 0.95f),
                 radius = r,
                 center = c,
                 style = Stroke(1.8.dp.toPx())
             )
             drawCircle(
-                color = Color.White.copy(alpha = 0.2f),
+                color = rimTint.copy(alpha = 0.2f),
                 radius = r * 1.012f,
                 center = c,
                 style = Stroke(4.dp.toPx())
             )
             drawCircle(
-                color = GtmColors.orbLavender.copy(alpha = 0.18f),
+                color = glowTint.copy(alpha = 0.18f),
                 radius = r * 0.97f,
                 center = c,
                 style = Stroke(8.dp.toPx())
             )
             drawCircle(
-                color = Color.White.copy(alpha = 0.25f),
+                color = rimTint.copy(alpha = 0.25f),
                 radius = r * 1.1f,
                 center = c,
                 style = Stroke(1.dp.toPx())

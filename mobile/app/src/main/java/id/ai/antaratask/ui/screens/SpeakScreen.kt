@@ -1,5 +1,7 @@
 package id.ai.antaratask.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -85,17 +87,21 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
         VoiceState.CAPTURED -> "Captured"
         VoiceState.ERROR -> "Attention"
     }
-    val pillDot = when (state.voiceState) {
-        VoiceState.LISTENING, VoiceState.CONNECTING -> GtmColors.orbViolet
-        VoiceState.CAPTURED -> Color(0xFF3FA37E)
-        VoiceState.ERROR -> Color(0xFFC25B78)
-        else -> GtmColors.speakMuted.copy(alpha = 0.55f)
-    }
+    val pillDot by animateColorAsState(
+        targetValue = when (state.voiceState) {
+            VoiceState.LISTENING, VoiceState.CONNECTING -> GtmColors.orbViolet
+            VoiceState.CAPTURED -> Color(0xFF3FA37E)
+            VoiceState.ERROR -> Color(0xFFD24A6A)
+            else -> GtmColors.speakMuted.copy(alpha = 0.55f)
+        },
+        animationSpec = tween(400),
+        label = "pillDot"
+    )
     val caption = when {
+        error -> ""
         listening -> "Listening… tap the orb when you're done."
         thinking -> "Reading the request…"
         captured -> proposal?.message?.takeIf { it.isNotBlank() } ?: "Review the card below."
-        error -> state.error ?: "Nothing was saved. Try again."
         else -> "Tap the orb and speak naturally."
     }
 
@@ -169,16 +175,18 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
                 color = GtmColors.speakInk,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                caption,
-                style = MaterialTheme.typography.bodyMedium,
-                color = GtmColors.speakMuted,
-                textAlign = TextAlign.Center,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
+            if (caption.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    caption,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GtmColors.speakMuted,
+                    textAlign = TextAlign.Center,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
             if (listening && state.transcript.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(

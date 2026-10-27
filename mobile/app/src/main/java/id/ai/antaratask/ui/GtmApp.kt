@@ -128,8 +128,11 @@ fun GtmApp(viewModel: MainViewModel) {
             viewModel.consumeToast()
         }
     }
-    LaunchedEffect(state.error) {
-        if (state.paired && state.error != null) snackbar.showSnackbar(state.error!!)
+    LaunchedEffect(state.error, state.tab) {
+        // Speak renders its own error card; don't duplicate it as a snackbar.
+        if (state.paired && state.error != null && state.tab != Tab.SPEAK) {
+            snackbar.showSnackbar(state.error!!)
+        }
     }
     LaunchedEffect(state.voiceState, state.transcript) {
         if (state.voiceState == VoiceState.LISTENING) {
