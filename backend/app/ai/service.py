@@ -1,21 +1,22 @@
 from __future__ import annotations
 
 from ..config import Settings
-from .clients import AIError, AIResult, SelfProviderClient
+from .clients import AIError, AIResult, GatewayChatClient
 
 
 class AIService:
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.provider = SelfProviderClient(settings)
+        self.provider = GatewayChatClient(settings)
 
     def status(self) -> dict:
         return {
             "enabled": self.settings.ai_enabled,
-            "provider": "self",
+            "provider": "gateway",
             "configured": bool(self.settings.ai_api_key),
             "model": self.settings.ai_model,
             "base_url": self.settings.ai_base_url,
+            "capability": self.settings.ai_capability,
         }
 
     async def interpret(
