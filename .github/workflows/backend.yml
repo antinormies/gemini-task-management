@@ -92,6 +92,9 @@ jobs:
       VPS_PORT: ${{ secrets.VPS_PORT }}
       VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
       VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+      GTM_ENV_FILE: ${{ secrets.GTM_ENV_FILE }}
+      GTM_SECRET_KEY: ${{ secrets.GTM_SECRET_KEY }}
+      GTM_AI_API_KEY: ${{ secrets.GTM_AI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Install SSH key
@@ -119,6 +122,40 @@ jobs:
             --exclude '*.egg-info' \
             -e "ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -p $VPS_PORT" \
             backend/ "$VPS_USER@$VPS_HOST:$APP_DIR/"
+      - name: Prepare server environment
+        run: |
+          if [ -n "${GTM_ENV_FILE:-}" ]; then
+            printf '%s\n' "$GTM_ENV_FILE" > /tmp/antaratask.env
+          else
+            if [ -z "${GTM_AI_API_KEY:-}" ]; then
+              echo "::error::Set the GTM_AI_API_KEY secret (the app client plaintext key) or GTM_ENV_FILE."
+              exit 1
+            fi
+            SECRET="${GTM_SECRET_KEY:-$(openssl rand -hex 32)}"
+            umask 077
+            cat > /tmp/antaratask.env <<EOF
+          GTM_HOST=127.0.0.1
+          GTM_PORT=8765
+          GTM_PUBLIC_ORIGIN=https://antaratask.dream-team.works
+          GTM_TIMEZONE=Asia/Jakarta
+          GTM_SECRET_KEY=$SECRET
+          GTM_AI_ENABLED=true
+          GTM_AI_BASE_URL=https://gateway.dream-team.works/v1/chat/stream
+          GTM_AI_API_KEY=$GTM_AI_API_KEY
+          GTM_AI_MODEL=deepseek-v4.1-flash
+          GTM_AI_CAPABILITY=chat.standard
+          GTM_AI_MAX_OUTPUT_TOKENS=1024
+          GTM_AI_TIMEOUT_SECONDS=120
+          GTM_VOICE_ENABLED=true
+          EOF
+          fi
+          chmod 600 /tmp/antaratask.env
+      - name: Install server environment if missing
+        run: |
+          if ! ssh -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "test -f '$APP_DIR/.env'"; then
+            scp -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -P "$VPS_PORT" /tmp/antaratask.env "$VPS_USER@$VPS_HOST:/tmp/antaratask.env"
+            ssh -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "install -m 600 /tmp/antaratask.env '$APP_DIR/.env'"
+          fi
       - name: Deploy
         run: |
           scp -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -P "$VPS_PORT" deploy/remote-deploy.sh "$VPS_USER@$VPS_HOST:/tmp/antaratask-remote-deploy.sh"
