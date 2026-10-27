@@ -1,12 +1,12 @@
-package dev.antinormies.gtm
+package id.ai.antaratask
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.remember
-import dev.antinormies.gtm.ui.GtmApp
-import dev.antinormies.gtm.ui.theme.GtmTheme
+import id.ai.antaratask.ui.GtmApp
+import id.ai.antaratask.ui.theme.GtmTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.data
+package id.ai.antaratask.data
 
 import android.content.Context
 import android.os.Build

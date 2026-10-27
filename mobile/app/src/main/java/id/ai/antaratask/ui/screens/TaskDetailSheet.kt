@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui.screens
+package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,15 +32,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.antinormies.gtm.data.Project
-import dev.antinormies.gtm.data.Task
-import dev.antinormies.gtm.ui.components.Pill
-import dev.antinormies.gtm.ui.components.PriorityPill
-import dev.antinormies.gtm.ui.components.SectionLabel
-import dev.antinormies.gtm.ui.components.formatEstimate
-import dev.antinormies.gtm.ui.components.priorityLabel
-import dev.antinormies.gtm.ui.components.statusLabel
-import dev.antinormies.gtm.ui.theme.GtmColors
+import id.ai.antaratask.data.Project
+import id.ai.antaratask.data.Task
+import id.ai.antaratask.ui.components.Pill
+import id.ai.antaratask.ui.components.PriorityPill
+import id.ai.antaratask.ui.components.SectionLabel
+import id.ai.antaratask.ui.components.formatEstimate
+import id.ai.antaratask.ui.components.priorityLabel
+import id.ai.antaratask.ui.components.statusLabel
+import id.ai.antaratask.ui.theme.GtmColors
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -107,7 +107,7 @@ fun TaskDetailSheet(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(task.shortKey + " · " + statusLabel(task.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(statusLabel(task.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         title.ifBlank { "Task" },
                         style = MaterialTheme.typography.titleLarge,

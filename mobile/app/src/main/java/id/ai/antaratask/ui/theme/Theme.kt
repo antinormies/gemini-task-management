@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui.theme
+package id.ai.antaratask.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.antinormies.gtm.R
+import id.ai.antaratask.R
 
 object GtmColors {
     val ink = Color(0xFF1D1D1F)
@@ -42,6 +42,23 @@ object GtmColors {
     val wave = Color(0xFF5AC8FA)
     val ok = Color(0xFF30D158)
     val alert = Color(0xFFFFB340)
+
+    // Light voice stage, inspired by the soft-lavender reference.
+    val speakBgTop = Color(0xFFF8F4FF)
+    val speakBg = Color(0xFFF2ECFF)
+    val speakBgBottom = Color(0xFFFDFBFF)
+    val speakInk = Color(0xFF3D3159)
+    val speakMuted = Color(0xFF8C7FA8)
+    val speakAccent = Color(0xFF6B4AB8)
+    val speakAccentSoft = Color(0xFFEDE3FF)
+    val speakCard = Color(0xFFFFFFFF)
+    val speakLine = Color(0xFFE7DDF7)
+    val orbPink = Color(0xFFFFB0D8)
+    val orbBlue = Color(0xFFA6C8FF)
+    val orbViolet = Color(0xFFB18CFF)
+    val orbLavender = Color(0xFFE2D0FF)
+    val orbRose = Color(0xFFFFB3C8)
+    val orbMint = Color(0xFFBFF2DF)
 }
 
 private val Jakarta = FontFamily(

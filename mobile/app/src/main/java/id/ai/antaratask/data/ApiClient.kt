@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.data
+package id.ai.antaratask.data
 
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient

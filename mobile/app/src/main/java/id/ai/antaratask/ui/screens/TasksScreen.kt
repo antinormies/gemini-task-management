@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui.screens
+package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -54,16 +55,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import dev.antinormies.gtm.MainViewModel
-import dev.antinormies.gtm.UiState
-import dev.antinormies.gtm.data.Task
-import dev.antinormies.gtm.ui.components.EmptyState
-import dev.antinormies.gtm.ui.components.TaskCard
-import dev.antinormies.gtm.ui.components.TaskRow
-import dev.antinormies.gtm.ui.components.isOverdue
+import id.ai.antaratask.MainViewModel
+import id.ai.antaratask.UiState
+import id.ai.antaratask.data.Task
+import id.ai.antaratask.ui.components.EmptyState
+import id.ai.antaratask.ui.components.TaskCard
+import id.ai.antaratask.ui.components.TaskRow
+import id.ai.antaratask.ui.components.isOverdue
 import kotlinx.coroutines.delay
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import kotlin.math.roundToInt
@@ -146,12 +146,6 @@ fun TasksScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp)) {
-                Text(
-                    LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, MMM d")).uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(5.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "My tasks",
@@ -188,18 +182,19 @@ fun TasksScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(10.dp))
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
                     Surface(color = MaterialTheme.colorScheme.surfaceContainerHighest, shape = RoundedCornerShape(9.dp)) {
                         Row(Modifier.padding(2.dp)) {
                             TabButton("Board", board) { board = true }
                             TabButton("List", !board) { board = false }
                         }
                     }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onAdd) { Text("Add", color = MaterialTheme.colorScheme.primary) }
-                }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     FilterChip("All", filter == "all") { filter = "all" }
                     FilterChip("Today", filter == "today") { filter = "today" }
                     FilterChip("Overdue", filter == "overdue") { filter = "overdue" }
@@ -384,11 +379,6 @@ fun TasksScreen(
                 ) {
                     Column(Modifier.padding(12.dp)) {
                         Text(
-                            task.shortKey,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
                             task.title,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -402,8 +392,8 @@ fun TasksScreen(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.inverseOnSurface,
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 14.dp)
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
                         .background(MaterialTheme.colorScheme.inverseSurface, RoundedCornerShape(99.dp))
                         .padding(horizontal = 14.dp, vertical = 7.dp)
                 )

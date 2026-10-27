@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.data
+package id.ai.antaratask.data
 
 import org.json.JSONArray
 import org.json.JSONObject
@@ -121,9 +121,15 @@ data class Preview(val op: String, val title: String, val summary: String) {
 
         private fun fromFields(fields: JSONObject): String {
             val parts = mutableListOf<String>()
-            fields.optString("status").takeIf { it.isNotBlank() }?.let { parts.add(it.replace("_", " ")) }
-            fields.optString("priority").takeIf { it.isNotBlank() && it != "none" }?.let { parts.add("priority " + it) }
-            fields.optString("due_at").takeIf { it.isNotBlank() }?.let { parts.add("due " + it.take(16).replace("T", " ")) }
+            fields.optString("status")
+                .takeIf { it.isNotBlank() && it != "null" }
+                ?.let { parts.add(it.replace("_", " ").replaceFirstChar { c -> c.uppercase() }) }
+            fields.optString("priority")
+                .takeIf { it.isNotBlank() && it != "null" && it != "none" }
+                ?.let { parts.add("priority " + it) }
+            fields.optString("due_at")
+                .takeIf { it.isNotBlank() && it != "null" }
+                ?.let { parts.add("due " + it.take(16).replace("T", " ")) }
             fields.optJSONArray("tags")?.let { if (it.length() > 0) parts.add(it.length().toString() + " tags") }
             return parts.joinToString(" · ")
         }

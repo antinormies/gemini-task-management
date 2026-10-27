@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui.components
+package id.ai.antaratask.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -28,8 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.antinormies.gtm.data.Task
-import dev.antinormies.gtm.ui.theme.GtmColors
+import id.ai.antaratask.data.Task
+import id.ai.antaratask.ui.theme.GtmColors
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -189,12 +189,12 @@ fun TaskCard(task: Task, modifier: Modifier = Modifier) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(task.shortKey, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.weight(1f))
-                formatEstimate(task.estimateMinutes)?.let { Pill(it) }
+            formatEstimate(task.estimateMinutes)?.let {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                    Pill(it)
+                }
+                Spacer(Modifier.height(5.dp))
             }
-            Spacer(Modifier.height(5.dp))
             Text(
                 task.title,
                 style = MaterialTheme.typography.titleMedium,

@@ -1,4 +1,4 @@
-package dev.antinormies.gtm.ui.screens
+package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,16 +21,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import dev.antinormies.gtm.MainViewModel
-import dev.antinormies.gtm.UiState
-import dev.antinormies.gtm.data.Health
-import dev.antinormies.gtm.data.Usage
-import dev.antinormies.gtm.ui.theme.GtmColors
+import id.ai.antaratask.MainViewModel
+import id.ai.antaratask.UiState
+import id.ai.antaratask.data.Usage
+import id.ai.antaratask.ui.theme.GtmColors
 
 @Composable
 fun SystemScreen(state: UiState, viewModel: MainViewModel) {
     val usage = state.usage
-    val health = state.health
 
     Column(
         Modifier
@@ -39,11 +37,7 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 22.dp)
     ) {
-        Text("SYSTEM", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(5.dp))
-        Text("Usage & device", style = MaterialTheme.typography.headlineLarge)
-        Spacer(Modifier.height(4.dp))
-        Text("Everything GTM keeps on this phone and on your local server.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Usage & device", style = MaterialTheme.typography.headlineLarge, color = Color.White)
         Spacer(Modifier.height(18.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -66,7 +60,6 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
                 KeyValue("Tokens", usage.tokens.toString())
                 KeyValue("Estimated cost", "$" + String.format("%.2f", usage.estimatedCost))
                 KeyValue("Projects", usage.projects.toString())
-                KeyValue("Paired devices", usage.devices.toString())
             }
         }
 
@@ -79,29 +72,6 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
         }
 
         Spacer(Modifier.height(12.dp))
-        SettingsCard(title = "Engine", meta = health?.provider ?: "checking") {
-            if (health == null) {
-                Text("Loading health…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            } else {
-                KeyValue("Database", if (health.dbOk) "online" else "offline")
-                KeyValue("AI provider", "self")
-                KeyValue("Model", if (health.aiConfigured) health.aiModel else "not configured")
-                KeyValue("Voice", if (health.voiceEnabled) health.voiceProvider else "disabled")
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        SettingsCard(title = "Paired devices", meta = state.devices.size.toString()) {
-            if (state.devices.isEmpty()) {
-                Text("No paired devices.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            } else {
-                state.devices.forEach { device ->
-                    KeyValue(device.name, if (device.revoked) "revoked" else (device.lastSeenAt?.take(16)?.replace("T", " ") ?: "never seen"))
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
         SettingsCard(title = "Maintenance", meta = "local only") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { viewModel.backup() }, modifier = Modifier.weight(1f)) { Text("Back up") }
@@ -111,12 +81,6 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
             OutlinedButton(onClick = { viewModel.loadSystem() }, modifier = Modifier.fillMaxWidth()) { Text("Refresh diagnostics") }
         }
 
-        Spacer(Modifier.height(18.dp))
-        Text(
-            "GTM 0.1.0 · Audio is handled by your phone's speech service. GTM receives only the transcript. Cloud audio is off.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
         Spacer(Modifier.height(90.dp))
     }
 }

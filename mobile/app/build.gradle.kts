@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.antinormies.gtm"
+    namespace = "id.ai.antaratask"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "dev.antinormies.gtm"
+        applicationId = "id.ai.antaratask"
         minSdk = 31
         targetSdk = 36
         versionCode = 1
