@@ -81,12 +81,6 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
             OutlinedButton(onClick = { viewModel.loadSystem() }, modifier = Modifier.fillMaxWidth()) { Text("Refresh diagnostics") }
         }
 
-        Spacer(Modifier.height(18.dp))
-        Text(
-            "GTM 0.1.0 · Audio is handled by your phone's speech service. GTM receives only the transcript. Cloud audio is off.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
         Spacer(Modifier.height(90.dp))
     }
 }

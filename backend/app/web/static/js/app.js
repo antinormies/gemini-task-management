@@ -265,7 +265,7 @@
   function renderDrawer() {
     var t = state.selected;
     if (!t) return;
-    $("#detail-eyebrow").textContent = t.short_key + " · " + statusLabel(t.status);
+    $("#detail-eyebrow").textContent = statusLabel(t.status);
     $("#detail-title").textContent = t.title;
     var projects = state.projects.map(function (p) {
       return '<option value="' + esc(p.id) + '"' + (p.id === t.project_id ? " selected" : "") + ">" + esc(p.name) + "</option>";
@@ -471,7 +471,7 @@
       if (item.op === "query") {
         var tasks = item.tasks || [];
         return '<div class="proposal-item"><strong>Query · ' + tasks.length + ' tasks</strong>' +
-          tasks.slice(0, 5).map(function (t) { return "<span>" + esc((t.short_key || "") + " · " + (t.title || "")) + "</span>"; }).join("") +
+          tasks.slice(0, 5).map(function (t) { return "<span>" + esc(t.title || "") + "</span>"; }).join("") +
           (tasks.length > 5 ? '<span>…and ' + (tasks.length - 5) + ' more</span>' : "") + "</div>";
       }
       return '<div class="proposal-item"><strong>' + esc((item.op || "change").replace(/_/g, " ")) + "</strong></div>";

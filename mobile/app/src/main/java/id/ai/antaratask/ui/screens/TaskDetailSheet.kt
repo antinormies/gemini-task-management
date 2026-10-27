@@ -107,7 +107,7 @@ fun TaskDetailSheet(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(task.shortKey + " · " + statusLabel(task.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(statusLabel(task.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         title.ifBlank { "Task" },
                         style = MaterialTheme.typography.titleLarge,

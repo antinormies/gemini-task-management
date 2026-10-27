@@ -189,12 +189,12 @@ fun TaskCard(task: Task, modifier: Modifier = Modifier) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(task.shortKey, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.weight(1f))
-                formatEstimate(task.estimateMinutes)?.let { Pill(it) }
+            formatEstimate(task.estimateMinutes)?.let {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                    Pill(it)
+                }
+                Spacer(Modifier.height(5.dp))
             }
-            Spacer(Modifier.height(5.dp))
             Text(
                 task.title,
                 style = MaterialTheme.typography.titleMedium,

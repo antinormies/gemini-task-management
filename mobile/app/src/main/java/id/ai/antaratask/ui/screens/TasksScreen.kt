@@ -379,11 +379,6 @@ fun TasksScreen(
                 ) {
                     Column(Modifier.padding(12.dp)) {
                         Text(
-                            task.shortKey,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
                             task.title,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,

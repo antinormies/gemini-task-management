@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
@@ -174,7 +175,17 @@ fun GtmApp(viewModel: MainViewModel) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(if (lightStage) GtmColors.speakBg else MaterialTheme.colorScheme.background)
+            .background(
+                if (lightStage) {
+                    Brush.verticalGradient(
+                        listOf(GtmColors.speakBgTop, GtmColors.speakBg, GtmColors.speakBgBottom)
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.background)
+                    )
+                }
+            )
     ) {
         Scaffold(
             containerColor = Color.Transparent,
@@ -288,15 +299,16 @@ private fun GtmBottomBar(selected: Tab, onSelect: (Tab) -> Unit, lightStage: Boo
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 8.dp)
             .navigationBarsPadding(),
-        color = if (lightStage) Color.White.copy(alpha = 0.72f) else MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(26.dp),
-        tonalElevation = if (lightStage) 0.dp else 2.dp,
-        shadowElevation = if (lightStage) 12.dp else 10.dp
+        color = Color.Transparent,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 8.dp)
+                .padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items.forEach { item ->
