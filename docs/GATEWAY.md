@@ -1,43 +1,71 @@
 # Production gateway connection
 
-GTM uses the MemeChat Gateway's first-party JSON completion endpoint; the
-Android app and web UI only talk to the local GTM API.
+GTM uses the MemeChat Gateway's **app-client chat stream**:
 
 | Setting | Value |
 | --- | --- |
-| `GTM_AI_BASE_URL` | `https://gateway.dream-team.works/internal/ai/complete` |
-| `GTM_AI_API_KEY` | the gateway's `SELF_AI_API_KEY` (server-to-server Bearer) |
+| `GTM_AI_BASE_URL` | `https://gateway.dream-team.works/v1/chat/stream` |
+| `GTM_AI_API_KEY` | the app client's plaintext key (sent as `X-App-Client-Key`) |
+| `GTM_AI_CAPABILITY` | `chat.standard` (1024-token output budget) |
 | `GTM_AI_MODEL` | `deepseek-v4.1-flash` |
+| `GTM_AI_MAX_OUTPUT_TOKENS` | `1024` |
 
-`backend/.env` is gitignored. Never commit either key.
+`chat.standard` is capped at 1024 output tokens. GTM therefore uses the
+compact parser prompt (`build_compact_prompt`) for this capability and
+retries once if the model returns reasoning-only text.
 
-## Two credentials, two surfaces
+No Firebase token is required. The app-client key is the app identity; the
+gateway only needs a Firebase UID if the client is configured to require one.
 
-- **`SELF_AI_API_KEY`** — `Authorization: Bearer ...` for
-  `POST /internal/ai/complete`. This is the server-to-server endpoint GTM uses.
-  It is not a Firebase token and not an app-client key.
-- **App-client key** — `X-App-Client-Key: ...` for `/v1/*`
-  (for example `/v1/chat/stream`). In production `/v1/*` is also wrapped in
-  Firebase bearer auth, so an app-client key is for the Firebase-authenticated
-  mobile app, not for GTM.
+## The key shown in the console is a digest
+
+The backoffice app-client page displays the **SHA-1 digest** under "Client
+identity"; the plaintext key is shown only once when a client is created or
+when **Rotate key** is used. Use the plaintext value from that one-time dialog,
+never the displayed digest.
+
+The client must also have the capability enabled and bound to a routed model
+(Capability map → Add capability → Save capability map).
+
+## Wire format
+
+`POST /v1/chat/stream` returns SSE:
+
+```
+event: meta
+data: {"capability":"chat.standard","requestId":"...","reserved":0}
+
+event: delta
+data: {"text":"..."}
+
+event: usage
+data: {"inputTokens":37,"outputTokens":12,"creditsCharged":0}
+
+event: done
+data: {"finishReason":"stop","balanceAfterCommit":0}
+```
+
+GTM accumulates `delta.text`, parses the JSON interpretation, and records the
+token usage from the `usage` event.
+
+## Sample request
+
+```bash
+curl -N https://gateway.dream-team.works/v1/chat/stream \
+  -H "X-App-Client-Key: $GTM_AI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"requestId":"'$(uuidgen)'","capability":"chat.standard",
+       "messages":[{"role":"user","text":"Reply with: ok"}],
+       "maxOutputTokens":32}'
+```
 
 ## Validation
 
 ```bash
-# backend running locally
 curl -sS http://127.0.0.1:8765/api/health | jq '.ai'
-# provider "self", configured true, the production base_url
+# provider "gateway", configured true, the chat-stream base_url
 ```
 
-For the Android emulator, expose the loopback backend first:
-
-```bash
-adb reverse tcp:8765 tcp:8765
-```
-
-Then send a command from the web app or the Android Speak screen. The run's
-`model` should be `deepseek-v4.1-flash`; the proposal is produced by the
-production gateway.
-
-If the gateway key rotates, update `GTM_AI_API_KEY` in `backend/.env` and
-restart the backend. No code change is needed.
+If the key is rotated, update `GTM_AI_API_KEY` in `backend/.env` and restart
+the backend. No code change is needed.

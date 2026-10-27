@@ -30,9 +30,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     ai_enabled: bool = True
-    ai_base_url: str = "http://127.0.0.1:8080/internal/ai/complete"
+    ai_base_url: str = "https://gateway.dream-team.works/v1/chat/stream"
     ai_api_key: str = ""
     ai_model: str = "deepseek-v4.1-flash"
+    ai_capability: str = "chat.standard"
+    ai_max_output_tokens: int = 1024
     ai_timeout_seconds: int = 120
 
     voice_enabled: bool = True

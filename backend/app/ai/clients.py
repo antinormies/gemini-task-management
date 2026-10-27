@@ -1,13 +1,42 @@
 from __future__ import annotations
 
+import json
 import time
+import uuid
 from dataclasses import dataclass, field
 
 import httpx
 
 from ..config import Settings
 from .parser import parse_interpretation_text
-from .schemas import SCHEMA, Interpretation
+from .schemas import Interpretation
+
+DEFAULT_SYSTEM = (
+    "You are a strict JSON task parser. Do not reason step by step. "
+    "Return only the requested JSON object, with no prose or markdown."
+)
+
+
+def _consume_event(event: str, raw: str, text_parts: list[str], state: dict) -> None:
+    if not raw:
+        return
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return
+    if event == "delta":
+        piece = data.get("text")
+        if isinstance(piece, str) and piece:
+            text_parts.append(piece)
+    elif event == "usage":
+        state["usage"] = data
+    elif event == "done":
+        state["finish_reason"] = str(data.get("finishReason") or "")
+    elif event == "error":
+        raise AIError(
+            "AI_STREAM_ERROR",
+            str(data.get("message") or data.get("code") or "gateway stream error"),
+        )
 
 
 class AIError(RuntimeError):
@@ -27,24 +56,13 @@ class AIResult:
     usage: dict = field(default_factory=dict)
 
 
-def _usage_from(usage: dict | None) -> dict:
-    usage = usage or {}
-    total = usage.get("total_tokens") or usage.get("totalTokenCount")
-    return {
-        "input_tokens": usage.get("prompt_tokens") or usage.get("promptTokenCount"),
-        "output_tokens": usage.get("completion_tokens") or usage.get("candidatesTokenCount"),
-        "total_tokens": total,
-        "thinking_tokens": usage.get("completion_tokens_details", {}).get("reasoning_tokens")
-        or usage.get("thoughtsTokenCount"),
-    }
+class GatewayChatClient:
+    """App-client chat stream against the MemeChat Gateway.
 
-
-class SelfProviderClient:
-    """The single AI provider: the self-hosted gateway completion endpoint.
-
-    The gateway owns provider credentials and upstream routing; GTM only holds
-    its own service key. Requests are JSON (not SSE) and return {text, model,
-    usage}.
+    The gateway authenticates the app with X-App-Client-Key, authorizes the
+    requested capability, and streams SSE events: meta, delta, usage, done.
+    A reasoning model occasionally emits only reasoning and no content; the
+    request is retried once with a strict system instruction.
     """
 
     def __init__(self, settings: Settings):
@@ -56,69 +74,103 @@ class SelfProviderClient:
         if not self.settings.ai_base_url:
             raise AIError("AI_NOT_CONFIGURED", "GTM_AI_BASE_URL is empty")
 
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
-        base_body = {
-            "model": self.settings.ai_model,
-            "messages": messages,
-            "max_tokens": 8192,
-            "temperature": 0,
-        }
-        variants = [
-            {
-                **base_body,
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": {"name": "gtm_interpretation", "schema": SCHEMA, "strict": True},
-                },
-            },
-            {**base_body, "response_format": {"type": "json_object"}},
-            base_body,
+        messages = [
+            {"role": "system", "text": system or DEFAULT_SYSTEM},
+            {"role": "user", "text": prompt},
         ]
         headers = {
-            "Authorization": f"Bearer {self.settings.ai_api_key}",
+            "X-App-Client-Key": self.settings.ai_api_key,
             "Content-Type": "application/json",
-            "Accept": "application/json",
+            "Accept": "text/event-stream",
             "User-Agent": "gtm-backend/0.1",
         }
+        timeout = httpx.Timeout(self.settings.ai_timeout_seconds, connect=20.0)
         started = time.monotonic()
-        last_error = ""
-        async with httpx.AsyncClient(timeout=self.settings.ai_timeout_seconds) as client:
-            for body in variants:
+        text = ""
+        usage: dict = {}
+        finish_reason = ""
+
+        for _attempt in range(2):
+            payload = {
+                "requestId": str(uuid.uuid4()),
+                "capability": self.settings.ai_capability,
+                "messages": messages,
+                "maxOutputTokens": self.settings.ai_max_output_tokens,
+            }
+            text_parts: list[str] = []
+            state = {"usage": {}, "finish_reason": ""}
+            event_name: str | None = None
+            data_lines: list[str] = []
+
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 try:
-                    response = await client.post(
-                        self.settings.ai_base_url, headers=headers, json=body
-                    )
+                    async with client.stream(
+                        "POST", self.settings.ai_base_url, headers=headers, json=payload
+                    ) as response:
+                        if response.status_code != 200:
+                            body = (await response.aread()).decode("utf-8", "replace")
+                            raise AIError(
+                                "AI_HTTP_ERROR",
+                                f"gateway HTTP {response.status_code}: {body[:600]}",
+                            )
+                        async for line in response.aiter_lines():
+                            if line.startswith(":"):
+                                continue
+                            if line.startswith("event:"):
+                                event_name = line[6:].strip()
+                                data_lines = []
+                            elif line.startswith("data:"):
+                                data_lines.append(line[5:].strip())
+                            elif line == "":
+                                if event_name and data_lines:
+                                    _consume_event(
+                                        event_name,
+                                        "\n".join(data_lines),
+                                        text_parts,
+                                        state,
+                                    )
+                                event_name = None
+                                data_lines = []
+                        if event_name and data_lines:
+                            _consume_event(
+                                event_name,
+                                "\n".join(data_lines),
+                                text_parts,
+                                state,
+                            )
+                except AIError:
+                    raise
                 except Exception as exc:
                     raise AIError("AI_NETWORK", f"{type(exc).__name__}: {exc}") from exc
-                if response.status_code == 200:
-                    payload = response.json()
-                    text = payload.get("text")
-                    if not text:
-                        try:
-                            text = payload["choices"][0]["message"]["content"]
-                        except KeyError, IndexError, TypeError:
-                            text = ""
-                    if not text:
-                        # Reasoning models occasionally return no content;
-                        # try the next response-format variant instead.
-                        last_error = "empty completion"
-                        continue
-                    try:
-                        interpretation = parse_interpretation_text(text)
-                    except Exception as exc:
-                        raise AIError("AI_SCHEMA_MISMATCH", str(exc)) from exc
-                    return AIResult(
-                        interpretation=interpretation,
-                        provider="self",
-                        model=payload.get("model") or self.settings.ai_model,
-                        raw=payload,
-                        duration_ms=int((time.monotonic() - started) * 1000),
-                        usage=_usage_from(payload.get("usage")),
-                    )
-                last_error = response.text[:800]
-                if response.status_code not in (400, 404, 422, 502):
-                    break
-        raise AIError("AI_ERROR", last_error or "self provider request failed")
+
+            usage = state["usage"]
+            finish_reason = state["finish_reason"]
+            text = "".join(text_parts).strip()
+            if text:
+                break
+
+        if not text:
+            raise AIError("AI_EMPTY", "gateway returned no text")
+        try:
+            interpretation = parse_interpretation_text(text)
+        except Exception as exc:
+            raise AIError("AI_SCHEMA_MISMATCH", str(exc)) from exc
+
+        input_tokens = usage.get("inputTokens")
+        output_tokens = usage.get("outputTokens")
+        total_tokens = None
+        if isinstance(input_tokens, int) and isinstance(output_tokens, int):
+            total_tokens = input_tokens + output_tokens
+        return AIResult(
+            interpretation=interpretation,
+            provider="gateway",
+            model=self.settings.ai_model,
+            raw={"usage": usage, "finish_reason": finish_reason},
+            duration_ms=int((time.monotonic() - started) * 1000),
+            usage={
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": total_tokens,
+                "thinking_tokens": None,
+            },
+        )
