@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -63,7 +64,6 @@ import id.ai.antaratask.ui.components.TaskRow
 import id.ai.antaratask.ui.components.isOverdue
 import kotlinx.coroutines.delay
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import kotlin.math.roundToInt
@@ -146,12 +146,6 @@ fun TasksScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp)) {
-                Text(
-                    LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, MMM d")).uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(5.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "My tasks",
@@ -188,18 +182,19 @@ fun TasksScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(10.dp))
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
                     Surface(color = MaterialTheme.colorScheme.surfaceContainerHighest, shape = RoundedCornerShape(9.dp)) {
                         Row(Modifier.padding(2.dp)) {
                             TabButton("Board", board) { board = true }
                             TabButton("List", !board) { board = false }
                         }
                     }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onAdd) { Text("Add", color = MaterialTheme.colorScheme.primary) }
-                }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     FilterChip("All", filter == "all") { filter = "all" }
                     FilterChip("Today", filter == "today") { filter = "today" }
                     FilterChip("Overdue", filter == "overdue") { filter = "overdue" }

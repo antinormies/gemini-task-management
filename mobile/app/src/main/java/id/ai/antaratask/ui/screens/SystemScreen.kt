@@ -23,14 +23,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import id.ai.antaratask.MainViewModel
 import id.ai.antaratask.UiState
-import id.ai.antaratask.data.Health
 import id.ai.antaratask.data.Usage
 import id.ai.antaratask.ui.theme.GtmColors
 
 @Composable
 fun SystemScreen(state: UiState, viewModel: MainViewModel) {
     val usage = state.usage
-    val health = state.health
 
     Column(
         Modifier
@@ -39,11 +37,7 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 22.dp)
     ) {
-        Text("SYSTEM", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(5.dp))
-        Text("Usage & device", style = MaterialTheme.typography.headlineLarge)
-        Spacer(Modifier.height(4.dp))
-        Text("Everything GTM keeps on this phone and on your local server.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Usage & device", style = MaterialTheme.typography.headlineLarge, color = Color.White)
         Spacer(Modifier.height(18.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -66,7 +60,6 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
                 KeyValue("Tokens", usage.tokens.toString())
                 KeyValue("Estimated cost", "$" + String.format("%.2f", usage.estimatedCost))
                 KeyValue("Projects", usage.projects.toString())
-                KeyValue("Paired devices", usage.devices.toString())
             }
         }
 
@@ -76,29 +69,6 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
             KeyValue("Backups", formatBytes(usage?.storage?.backupsBytes ?: 0L))
             KeyValue("Logs", formatBytes(usage?.storage?.logsBytes ?: 0L))
             KeyValue("Workspace", formatBytes(usage?.storage?.workspaceBytes ?: 0L))
-        }
-
-        Spacer(Modifier.height(12.dp))
-        SettingsCard(title = "Engine", meta = health?.provider ?: "checking") {
-            if (health == null) {
-                Text("Loading health…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            } else {
-                KeyValue("Database", if (health.dbOk) "online" else "offline")
-                KeyValue("AI provider", "self")
-                KeyValue("Model", if (health.aiConfigured) health.aiModel else "not configured")
-                KeyValue("Voice", if (health.voiceEnabled) health.voiceProvider else "disabled")
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        SettingsCard(title = "Paired devices", meta = state.devices.size.toString()) {
-            if (state.devices.isEmpty()) {
-                Text("No paired devices.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            } else {
-                state.devices.forEach { device ->
-                    KeyValue(device.name, if (device.revoked) "revoked" else (device.lastSeenAt?.take(16)?.replace("T", " ") ?: "never seen"))
-                }
-            }
         }
 
         Spacer(Modifier.height(12.dp))

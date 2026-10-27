@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,8 +30,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,18 +40,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import id.ai.antaratask.MainViewModel
 import id.ai.antaratask.UiState
 import id.ai.antaratask.VoiceState
@@ -69,7 +74,6 @@ private val SpeakSerif = TextStyle(
 
 @Composable
 fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
-    var typeOpen by remember { mutableStateOf(false) }
     var typedCommand by remember { mutableStateOf("") }
 
     val listening = state.voiceState == VoiceState.LISTENING
@@ -215,7 +219,18 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
                 .padding(horizontal = 26.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            WritePill(enabled = !thinking && !listening) { typeOpen = true }
+            WritePill(
+                value = typedCommand,
+                onValueChange = { typedCommand = it },
+                enabled = !thinking && !listening,
+                onSend = {
+                    val text = typedCommand.trim()
+                    if (text.isNotEmpty()) {
+                        typedCommand = ""
+                        viewModel.voiceFinished(text, 0)
+                    }
+                }
+            )
             Spacer(Modifier.height(8.dp))
             Text(
                 "Audio stays on your phone. Only the transcript is sent.",
@@ -229,74 +244,6 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
         }
     }
 
-    if (typeOpen) {
-        Dialog(onDismissRequest = { typeOpen = false }) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(26.dp),
-                color = Color(0xFFFDFBFF),
-                border = BorderStroke(1.dp, Color.White),
-                shadowElevation = 24.dp
-            ) {
-                Column(Modifier.padding(22.dp)) {
-                    Text(
-                        "Write instead",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = GtmColors.speakInk
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = typedCommand,
-                        onValueChange = { typedCommand = it },
-                        placeholder = {
-                            Text(
-                                "e.g. Add a task to call the vet tomorrow",
-                                color = GtmColors.speakMuted.copy(alpha = 0.75f)
-                            )
-                        },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            color = GtmColors.speakInk
-                        ),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GtmColors.speakAccent,
-                            unfocusedBorderColor = GtmColors.speakLine,
-                            cursorColor = GtmColors.speakAccent,
-                            focusedTextColor = GtmColors.speakInk,
-                            unfocusedTextColor = GtmColors.speakInk
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 4
-                    )
-                    Spacer(Modifier.height(14.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(onClick = { typeOpen = false }) {
-                            Text("Cancel", color = GtmColors.speakMuted)
-                        }
-                        Button(
-                            onClick = {
-                                val text = typedCommand.trim()
-                                if (text.isNotEmpty()) {
-                                    typeOpen = false
-                                    typedCommand = ""
-                                    viewModel.voiceFinished(text, 0)
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = GtmColors.speakAccent,
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(99.dp)
-                        ) { Text("Send") }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -326,11 +273,17 @@ private fun AmbientGlow() {
 }
 
 @Composable
-private fun WritePill(enabled: Boolean, onClick: () -> Unit) {
+private fun WritePill(
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean,
+    onSend: () -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled) { onClick() },
+        modifier = Modifier.fillMaxWidth(),
         color = Color.White.copy(alpha = if (enabled) 0.8f else 0.55f),
         shape = RoundedCornerShape(32.dp),
         border = BorderStroke(1.dp, Color.White),
@@ -340,21 +293,52 @@ private fun WritePill(enabled: Boolean, onClick: () -> Unit) {
             modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Write instead…",
-                style = MaterialTheme.typography.bodyMedium,
-                color = GtmColors.speakMuted,
-                modifier = Modifier.weight(1f)
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                enabled = enabled,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = GtmColors.speakInk),
+                cursorBrush = SolidColor(GtmColors.speakAccent),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(
+                    onSend = {
+                        onSend()
+                        keyboard?.hide()
+                    }
+                ),
+                modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (value.isEmpty()) {
+                            Text(
+                                "Write instead…",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = GtmColors.speakMuted
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
             )
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .background(GtmColors.speakAccentSoft, CircleShape),
+                    .background(GtmColors.speakAccentSoft, CircleShape)
+                    .clickable(enabled = enabled) {
+                        if (value.isBlank()) {
+                            focusRequester.requestFocus()
+                            keyboard?.show()
+                        } else {
+                            onSend()
+                            keyboard?.hide()
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.AutoMirrored.Rounded.Send,
-                    contentDescription = "Write a command",
+                    contentDescription = "Send command",
                     tint = GtmColors.speakAccent,
                     modifier = Modifier.size(19.dp)
                 )
