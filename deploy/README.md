@@ -24,9 +24,12 @@ so nothing persists after the job.
 | VPS_PORT | 22 |
 | VPS_SSH_KEY | private key matching github-actions-deploy |
 | VPS_KNOWN_HOSTS | the two host-key lines below |
-| GTM_AI_API_KEY | app client plaintext key (required for first deploy) |
+| GTM_AI_API_KEY | app client plaintext key (required only when .env is missing) |
 | GTM_SECRET_KEY | long random secret (optional; generated if absent) |
 | GTM_ENV_FILE | optional full .env override, multiline |
+
+If the server already has .env, the deploy leaves it untouched and does not
+require GTM_AI_API_KEY.
 
     139.99.88.23 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPNBetaOdE0+KO67iSgP3db8Ctc0gC8yRU5fiEdlWOkR
     139.99.88.23 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDEZj1/gP4ujyrypiOVZU9/loisTH23JHeR5upHG/v3l6HB3TMYQosD/NYgfaCK6lT0Wu9lA6ldrAQZoaWSN4asxDGNa1LlzFdyWRwsnSeoOAHRf1FJp+RE1m8iUAqoEjqMojQLl71N1tuhVFUsdReej2R7xTenpkLtz0jV2Q2vM6/WzYlPgKcJnd6pypWZgbt0ZqdmP3AKmAtUAfByQ7rAII/5bIwf3D7tT1ZcFhszGBAKeo/eUYdZ1Z7wshbmlF4ipucGtBwAHkMGD++oWJ9JcPy2ndX0yHAkVlzLQpaojBAQfMKENSMq3vF3aM4cdN7gFd1WLhGSk4dE6UMW9w161QcVjspHWROYjniRnn1mP6VaCasGEuZAfqOY8bNAlW7/xhmvrDox8ZxatYdcbxKStJ6cA7TFK3sR6gNjZoMabpY3pddJLiw9ZgzXtq9a0P7NXdnKZ4yi+zEYLSrO4F7nV807pYyptuzOH4zxRPqbNzGONP4VXI3ktSCmx1s9f+c=

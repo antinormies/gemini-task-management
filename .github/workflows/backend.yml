@@ -124,6 +124,10 @@ jobs:
             backend/ "$VPS_USER@$VPS_HOST:$APP_DIR/"
       - name: Prepare server environment
         run: |
+          if ssh -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "test -f '$APP_DIR/.env'"; then
+            echo "Server .env exists; leaving it untouched."
+            exit 0
+          fi
           if [ -n "${GTM_ENV_FILE:-}" ]; then
             printf '%s\n' "$GTM_ENV_FILE" > /tmp/antaratask.env
           else
