@@ -242,7 +242,7 @@ private fun ConnectingScreen(state: UiState, onRetry: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                "CALL TASK AI",
+                "ANTARA TASK AI",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

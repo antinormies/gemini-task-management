@@ -145,7 +145,7 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "CALL TASK AI",
+                        "ANTARA TASK AI",
                         style = MaterialTheme.typography.labelSmall.copy(
                             letterSpacing = 2.2.sp,
                             fontWeight = FontWeight.Medium
