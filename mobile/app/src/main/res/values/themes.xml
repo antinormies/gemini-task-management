@@ -1,0 +1,8 @@
+<resources>
+    <!-- XML only provides the launch window shell. Compose owns colors,
+         typography, status-bar icon appearance, and all screens. -->
+    <style name="Theme.GTM" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>

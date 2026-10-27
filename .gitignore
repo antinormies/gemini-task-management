@@ -24,3 +24,30 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Backend runtime
+backend/.env
+backend/*.db
+backend/*.db-*
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/.coverage
+backend/htmlcov/
+
+# Android
+mobile/local.properties
+mobile/.gradle/
+mobile/build/
+mobile/app/build/
+mobile/.kotlin/
+mobile/.cxx/
+mobile/captures/
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# Keep examples
+!.env.example
+!backend/.env.example
+
