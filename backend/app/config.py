@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     public_origin: str = "http://127.0.0.1:8765"
     trust_proxy_headers: bool = True
     secret_key: str = ""
-    auto_pair_key: str = ""
+    google_client_id: str = ""
+    google_android_client_id: str = ""
+    session_max_age_seconds: int = 60 * 60 * 24 * 30
     pairing_ttl_seconds: int = 300
     pairing_max_attempts: int = 5
     log_level: str = "INFO"
@@ -34,6 +36,7 @@ class Settings(BaseSettings):
     ai_base_url: str = "https://gateway.dream-team.works/v1/chat/stream"
     ai_api_key: str = ""
     ai_model: str = "deepseek-v4.1-flash"
+    ai_firebase_uid: str = ""
     ai_capability: str = "chat.standard"
     ai_max_output_tokens: int = 1024
     ai_timeout_seconds: int = 120

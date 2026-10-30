@@ -26,7 +26,8 @@ so nothing persists after the job.
 | VPS_KNOWN_HOSTS | the two host-key lines below |
 | GTM_AI_API_KEY | app client plaintext key (required only when .env is missing) |
 | GTM_SECRET_KEY | long random secret (optional; generated if absent) |
-| GTM_AUTO_PAIR_KEY | optional Android production bootstrap key |
+| GTM_GOOGLE_CLIENT_ID | Google OAuth Web client ID (required for sign-in) |
+| GTM_GOOGLE_ANDROID_CLIENT_ID | optional Android OAuth client ID |
 | GTM_ENV_FILE | optional full .env override, multiline |
 
 If the server already has .env, the deploy leaves it untouched and does not
@@ -88,3 +89,10 @@ http://127.0.0.1:8765/api/health.
 
 The remote script refuses to deploy unless .env contains
 GTM_AI_CAPABILITY=chat.standard -- this deployment is standard-only.
+
+## Google sign-in before deploying
+
+The account migration removes the old auto-pair login. Configure
+GTM_GOOGLE_CLIENT_ID in the server .env and rebuild/install the Android APK
+with the same Web client ID before exposing the new backend. See
+docs/AUTH.md. The first Google login claims the legacy account and its data.

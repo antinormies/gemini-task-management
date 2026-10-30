@@ -3,9 +3,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from ...models import Account
 from ...services import projects as project_service
 from ...services.errors import NotFound, ValidationError
-from ..deps import get_db, verify_web_origin
+from ..deps import get_account, get_db, verify_web_origin
 from ..models import ProjectCreate, ProjectUpdate
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -16,7 +17,11 @@ def _payload(session, project):
 
 
 @router.get("")
-def list_projects(include_archived: bool = False, session: Session = Depends(get_db)):
+def list_projects(
+    include_archived: bool = False,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     return {
         "items": [
             _payload(session, p)
@@ -26,7 +31,11 @@ def list_projects(include_archived: bool = False, session: Session = Depends(get
 
 
 @router.post("", dependencies=[Depends(verify_web_origin)])
-def create_project(body: ProjectCreate, session: Session = Depends(get_db)):
+def create_project(
+    body: ProjectCreate,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     try:
         project = project_service.create_project(session, body.model_dump())
         return {"project": _payload(session, project)}
@@ -35,7 +44,12 @@ def create_project(body: ProjectCreate, session: Session = Depends(get_db)):
 
 
 @router.patch("/{project_id}", dependencies=[Depends(verify_web_origin)])
-def update_project(project_id: str, body: ProjectUpdate, session: Session = Depends(get_db)):
+def update_project(
+    project_id: str,
+    body: ProjectUpdate,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     try:
         project = project_service.update_project(
             session, project_id, body.model_dump(exclude_unset=True)

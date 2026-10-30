@@ -2,6 +2,8 @@ package id.ai.antaratask
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import id.ai.antaratask.data.Account
+import id.ai.antaratask.data.ApiException
 import id.ai.antaratask.data.Device
 import id.ai.antaratask.data.GtmRepository
 import id.ai.antaratask.data.Health
@@ -26,6 +28,7 @@ data class UiState(
     val tab: Tab = Tab.SPEAK,
     val tasks: List<Task> = emptyList(),
     val projects: List<Project> = emptyList(),
+    val account: Account? = null,
     val counts: Map<String, Int> = emptyMap(),
     val selected: Task? = null,
     val proposal: Proposal? = null,
@@ -39,6 +42,20 @@ data class UiState(
     val devices: List<Device> = emptyList()
 )
 
+private data class DashboardData(
+    val account: Account?,
+    val projects: List<Project>,
+    val tasks: List<Task>,
+    val counts: Map<String, Int>
+)
+
+private data class SystemData(
+    val account: Account?,
+    val health: Health?,
+    val usage: Usage?,
+    val devices: List<Device>
+)
+
 class MainViewModel(
     private val repository: GtmRepository,
     private val tts: TtsPlayer
@@ -47,7 +64,7 @@ class MainViewModel(
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     init {
-        if (repository.hasToken) refresh() else autoPair()
+        if (repository.hasToken) refresh()
     }
 
     fun setTab(tab: Tab) {
@@ -56,24 +73,32 @@ class MainViewModel(
     }
 
     fun retryConnection() {
-        if (repository.hasToken) refresh() else autoPair()
+        if (repository.hasToken) refresh()
     }
 
-    private fun autoPair() {
+    fun loginWithGoogle(idToken: String) {
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
-            runCatching { repository.autoPair() }
+            runCatching { repository.loginWithGoogle(idToken) }
                 .onSuccess { ok ->
                     if (ok) {
                         _state.update { it.copy(paired = true, loading = false, error = null) }
                         refresh()
                     } else {
                         _state.update {
-                            it.copy(loading = false, error = "Could not provision a device token.")
+                            it.copy(loading = false, error = "Google sign-in did not return a session.")
                         }
                     }
                 }
                 .onFailure { fail(it) }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            runCatching { repository.logout() }
+            repository.setToken(null)
+            _state.value = UiState(paired = false)
         }
     }
 
@@ -82,17 +107,19 @@ class MainViewModel(
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
             runCatching {
+                val account = repository.account()
                 val projects = repository.projects()
                 val bundle = repository.tasks("board")
-                Triple(projects, bundle.items, bundle.counts)
-            }.onSuccess { (projects, tasks, counts) ->
+                DashboardData(account, projects, bundle.items, bundle.counts)
+            }.onSuccess { data ->
                 _state.update {
                     it.copy(
                         paired = true,
                         loading = false,
-                        projects = projects,
-                        tasks = tasks,
-                        counts = counts,
+                        account = data.account ?: it.account,
+                        projects = data.projects,
+                        tasks = data.tasks,
+                        counts = data.counts,
                         error = null
                     )
                 }
@@ -105,13 +132,20 @@ class MainViewModel(
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
             runCatching {
+                val account = repository.account()
                 val health = repository.health()
                 val usage = repository.usage()
                 val devices = repository.devices()
-                Triple(health, usage, devices)
-            }.onSuccess { (health, usage, devices) ->
+                SystemData(account, health, usage, devices)
+            }.onSuccess { data ->
                 _state.update {
-                    it.copy(busy = false, health = health, usage = usage, devices = devices)
+                    it.copy(
+                        busy = false,
+                        account = data.account ?: it.account,
+                        health = data.health,
+                        usage = data.usage,
+                        devices = data.devices
+                    )
                 }
             }.onFailure { fail(it) }
         }
@@ -350,6 +384,18 @@ class MainViewModel(
     private fun toast(message: String) = _state.update { it.copy(toast = message) }
 
     private fun fail(error: Throwable) {
+        if (error is ApiException && error.status == 401) {
+            repository.setToken(null)
+            _state.update {
+                it.copy(
+                    paired = false,
+                    loading = false,
+                    busy = false,
+                    error = "Your session expired. Sign in again."
+                )
+            }
+            return
+        }
         _state.update { it.copy(loading = false, busy = false, error = error.message ?: "Something went wrong") }
     }
 

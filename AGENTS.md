@@ -29,7 +29,7 @@
 ### Android
 
 - SDK: `$HOME/Android/Sdk`; `local.properties` is git-ignored.
-- Build: `cd mobile && ./gradlew :app:assembleDebug`
+- Build: `cd mobile && ./gradlew :app:assembleDebug --no-daemon -PGTM_GOOGLE_CLIENT_ID=<web-client-id>`
 - Install: `adb install -r app/build/outputs/apk/debug/app-debug.apk`
 - USB API tunnel: `adb reverse tcp:8765 tcp:8765`
 - Unit tests: `cd mobile && ./gradlew :app:testDebugUnitTest`
@@ -44,7 +44,7 @@
 - AI is a **single self provider**: the MemeChat Gateway completion endpoint (`GTM_AI_BASE_URL`), authenticated with `GTM_AI_API_KEY`, model `GTM_AI_MODEL` (`deepseek-v4.1-flash`). GTM has no direct Gemini/agy/OpenCode dependency.
 - Production gateway: `https://gateway.dream-team.works/v1/chat/stream` with the app-client `X-App-Client-Key` and `chat.standard`; no Firebase token is required. The 40-hex value shown in the backoffice is the SHA-1 digest, not the key — rotate to get the plaintext. See `docs/GATEWAY.md`.
 - Voice is transcript-only: the Android speech recognizer produces the text; the backend sends it to the same self provider. Never upload audio in v1.
-- The Android app auto-provisions a device token on first launch via `POST /api/auth/auto-pair`; there is no pairing screen. Loopback works directly; the production app sends `X-Auto-Pair-Key` matching `GTM_AUTO_PAIR_KEY`, because the endpoint rejects proxied requests without it.
+- Web and Android sign in with Google. Google Identity Services issues an ID token; the backend verifies it, upserts an `Account`, and issues a device bearer token (Android) or a signed HttpOnly session cookie (web). The first Google login claims the legacy single-user account and its data. Every transactional query is scoped to the signed-in account.
 - Never print, commit, or log API keys, device tokens, or pairing codes.
 
 ### Environment facts

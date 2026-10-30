@@ -31,24 +31,49 @@
       opts.body = JSON.stringify(opts.body);
     }
     return fetch(path, Object.assign({}, opts, { headers: headers })).then(function (res) {
+      if (res.status === 401) {
+        window.location.assign("/login");
+        throw new Error("Sign in required");
+      }
       return res.text().then(function (text) {
         var data = null;
         try { data = text ? JSON.parse(text) : null; } catch (e) { data = { detail: text }; }
         if (!res.ok) {
           var detail = data && data.detail ? data.detail : (data && data.error ? data.error.message : res.statusText);
-          throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+          if (detail && typeof detail === "object") {
+            if (Array.isArray(detail)) {
+              detail = detail.map(function (item) { return item && item.msg ? item.msg : ""; }).filter(Boolean).join("; ");
+            } else {
+              detail = detail.message || detail.code || "Request failed";
+            }
+          }
+          var error = new Error(typeof detail === "string" && detail ? detail : "Request failed");
+          if (data && data.detail && typeof data.detail === "object") error.code = data.detail.code;
+          throw error;
         }
         return data;
       });
     });
   }
   function toast(message, isError) {
-    var el = $("#toast");
-    el.textContent = message;
-    el.classList.toggle("is-error", !!isError);
-    el.classList.add("is-on");
-    clearTimeout(el._timer);
-    el._timer = setTimeout(function () { el.classList.remove("is-on"); }, 2800);
+    var stack = $("#notifications");
+    if (!stack) return;
+    var card = document.createElement("div");
+    card.className = "notification " + (isError ? "is-error" : "is-success");
+    card.innerHTML =
+      '<span class="notification-icon" aria-hidden="true">' + (isError ? "!" : "✓") + "</span>" +
+      '<div class="notification-text">' + esc(message || "Something went wrong") + "</div>" +
+      '<button class="notification-close" type="button" aria-label="Dismiss">×</button>';
+    stack.appendChild(card);
+    requestAnimationFrame(function () { card.classList.add("is-on"); });
+    var timer = setTimeout(dismiss, 3000);
+    function dismiss() {
+      clearTimeout(timer);
+      card.classList.add("is-leaving");
+      setTimeout(function () { card.remove(); }, 180);
+    }
+    card.querySelector(".notification-close").addEventListener("click", dismiss);
+    while (stack.children.length > 4) stack.firstElementChild.remove();
   }
   function priorityClass(p) {
     return "priority priority-" + (p === "none" ? "none" : p || "none");
@@ -198,15 +223,23 @@
       projects: "Active work for this project."
     };
     var project = state.projects.filter(function (p) { return p.id === state.projectId; })[0];
-    $("#view-title").textContent = project ? project.name : (titles[state.view] || "Tasks");
-    $("#view-subtitle").textContent = subs[state.view] || "";
-    $("#eyebrow").textContent = state.view === "settings" ? "System" : project ? "Project" : state.view.charAt(0).toUpperCase() + state.view.slice(1);
+    var filtered = !!state.projectId;
+    var title = state.view === "projects" && project ? project.name : (titles[state.view] || "Tasks");
+    $("#view-title").textContent = title;
+    $("#view-subtitle").textContent = filtered && state.view !== "projects" && project
+      ? "Filtered by " + project.name
+      : (subs[state.view] || "");
+    $("#eyebrow").textContent = state.view === "settings"
+      ? "System"
+      : filtered
+        ? "Project filter"
+        : state.view.charAt(0).toUpperCase() + state.view.slice(1);
     $("#context-date").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   }
   function loadTasks() {
     var params = new URLSearchParams();
     params.set("view", state.mode === "board" ? "board" : (state.view === "settings" ? "today" : state.view));
-    if (state.view === "projects" && state.projectId) params.set("project_id", state.projectId);
+    if (state.projectId) params.set("project_id", state.projectId);
     if (state.query) params.set("q", state.query);
     if (state.mode === "board") params.set("include_done", "true");
     return api("/api/tasks?" + params.toString()).then(function (data) {
@@ -345,7 +378,9 @@
   function openQuickAdd() {
     var overlay = $("#quick-add-layer");
     if (overlay) { overlay.hidden = false; return; }
-    var optionHtml = state.projects.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + "</option>"; }).join("");
+    var optionHtml = state.projects.map(function (p) {
+      return '<option value="' + esc(p.id) + '"' + (p.id === state.projectId ? " selected" : "") + ">" + esc(p.name) + "</option>";
+    }).join("");
     var el = document.createElement("div");
     el.id = "quick-add-layer";
     el.className = "modal-backdrop quick-add-layer";
@@ -385,7 +420,10 @@
     setCommandStatus("AI is reading the request…");
     api("/api/ai/interpret", { method: "POST", body: { text: text, view: state.view, project_id: state.projectId || null } }).then(function (data) {
       pollRun(data.run_id);
-    }).catch(function (err) { setCommandStatus(err.message, true); });
+    }).catch(function (err) {
+      setCommandStatus(err.message, true);
+      toast(err.message, true);
+    });
   }
   function pollRun(runId) {
     clearTimeout(state.pollTimer);
@@ -399,7 +437,9 @@
           return;
         }
         if (run.status === "failed") {
-          setCommandStatus(run.error_message || "AI could not interpret that.", true);
+          var message = run.error_message || "AI could not interpret that.";
+          setCommandStatus(message, true);
+          toast(message, true);
           return;
         }
         if (run.proposal) {
@@ -409,7 +449,10 @@
         } else {
           setCommandStatus("No changes proposed.");
         }
-      }).catch(function (err) { setCommandStatus(err.message, true); });
+      }).catch(function (err) {
+        setCommandStatus(err.message, true);
+        toast(err.message, true);
+      });
     }
     tick();
   }
@@ -513,29 +556,13 @@
     $("#workspace").hidden = true;
     $("#command-area").hidden = true;
     $("#settings-panel").hidden = false;
-    api("/api/health").then(function (health) {
-      var ai = health.ai || {};
-      var lines = [
-        ["App", health.version],
-        ["Database", health.database.ok ? "OK" : "Error"],
-        ["AI provider", ai.provider],
-        ["Model", ai.model || "not configured"],
-        ["Endpoint", ai.configured ? "connected" : "not configured"],
-        ["Voice", health.voice.enabled ? health.voice.provider + " · " + health.voice.input : "disabled"],
-        ["Pairing", health.pairing.enabled ? "enabled" : "disabled"]
-      ];
-      $("#health-details").innerHTML = lines.map(function (row) {
-        return '<div class="kv"><span>' + esc(row[0]) + "</span><strong>" + esc(row[1]) + "</strong></div>";
-      }).join("");
-      $("#mini-health").innerHTML = '<div class="health-line"><span class="health-dot ' + (health.database.ok ? "" : "bad") + '"></span>DB ' + (health.database.ok ? "online" : "offline") + '</div><div class="health-line"><span class="health-dot ' + (ai.configured ? "" : "warn") + '"></span>' + esc(ai.configured ? ai.model : "AI not configured") + "</div>";
-    }).catch(function () {});
     api("/api/auth/devices").then(renderDevices).catch(function () {});
   }
   function renderDevices(data) {
     var items = data.items || [];
     $("#device-list").innerHTML = items.length ? items.map(function (d) {
       return '<div class="device-row"><div><strong>' + esc(d.name) + "</strong><br><span>" + esc((d.last_seen_at || d.created_at || "").slice(0, 16).replace("T", " ")) + "</span></div>" + (d.revoked_at ? '<span style="color:var(--danger)">revoked</span>' : '<button class="btn btn-small btn-quiet" data-revoke="' + esc(d.id) + '">Revoke</button>') + "</div>";
-    }).join("") : '<div class="muted">No paired devices.</div>';
+    }).join("") : '<div class="muted">No signed-in devices.</div>';
     $$("[data-revoke]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         api("/api/auth/devices/" + btn.getAttribute("data-revoke") + "/revoke", { method: "POST" }).then(function () {
@@ -676,13 +703,91 @@
     var meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.setAttribute("content", isDark ? "dark" : "light");
   });
+  function goToProject(id) {
+    if (state.view === "projects") {
+      window.location.href = id ? "/projects/" + encodeURIComponent(id) : "/all";
+      return;
+    }
+    var url = window.location.pathname;
+    if (id) url += "?project=" + encodeURIComponent(id);
+    window.location.href = url;
+  }
+  var projectFilter = $("#project-filter");
+  var projectFilterButton = $("#project-filter-btn");
+  var projectMenu = $("#project-menu");
+  function closeProjectMenu() {
+    if (!projectMenu || !projectFilterButton) return;
+    projectMenu.hidden = true;
+    projectFilterButton.setAttribute("aria-expanded", "false");
+  }
+  if (projectFilter && projectFilterButton && projectMenu) {
+    projectFilterButton.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var opening = projectMenu.hidden;
+      projectMenu.hidden = !opening;
+      projectFilterButton.setAttribute("aria-expanded", opening ? "true" : "false");
+      if (opening) {
+        var target = projectMenu.querySelector(".project-option.is-selected") ||
+          projectMenu.querySelector(".project-option");
+        if (target) target.focus();
+      }
+    });
+    projectMenu.addEventListener("click", function (ev) {
+      var option = ev.target.closest(".project-option");
+      if (!option) return;
+      closeProjectMenu();
+      goToProject(option.getAttribute("data-project") || "");
+    });
+    document.addEventListener("click", function (ev) {
+      if (!projectFilter.contains(ev.target)) closeProjectMenu();
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        closeProjectMenu();
+        projectFilterButton.focus();
+      }
+    });
+  }
+  var mobileNav = $(".mobile-nav");
+  var mobileMenuBtn = $("#mobile-menu-btn");
+  var mobileMenu = $("#mobile-menu");
+  function closeMobileMenu() {
+    if (!mobileMenu || !mobileMenuBtn) return;
+    mobileMenu.hidden = true;
+    mobileMenuBtn.setAttribute("aria-expanded", "false");
+  }
+  if (mobileNav && mobileMenuBtn && mobileMenu) {
+    mobileMenuBtn.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var opening = mobileMenu.hidden;
+      mobileMenu.hidden = !opening;
+      mobileMenuBtn.setAttribute("aria-expanded", opening ? "true" : "false");
+      if (opening) {
+        var first = mobileMenu.querySelector(".mobile-menu-link");
+        if (first) first.focus();
+      }
+    });
+    mobileMenu.addEventListener("click", function (ev) {
+      if (ev.target.closest("a, button")) closeMobileMenu();
+    });
+    document.addEventListener("click", function (ev) {
+      if (!mobileNav.contains(ev.target)) closeMobileMenu();
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") closeMobileMenu();
+    });
+  }
   $$("#view-tabs .tab-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       $$("#view-tabs .tab-btn").forEach(function (b) { b.classList.toggle("is-active", b === btn); });
       var view = btn.getAttribute("data-quick-view");
       if (view === "board") {
         // Projects keep their own board; global stage views jump to the full board.
-        if (state.view !== "all" && state.view !== "projects") { window.location.href = "/all"; return; }
+        if (state.view !== "all" && state.view !== "projects") {
+          var boardSuffix = state.projectId ? "?project=" + encodeURIComponent(state.projectId) : "";
+          window.location.href = "/all" + boardSuffix;
+          return;
+        }
         state.mode = "board"; loadTasks();
       } else if (view === "list") {
         state.mode = "list"; loadTasks();
@@ -694,7 +799,9 @@
     var q = ev.target.value.trim();
     if (!q) { refresh(); return; }
     state.mode = "list"; state.query = q;
-    api("/api/search?q=" + encodeURIComponent(q)).then(function (data) {
+    var searchPath = "/api/search?q=" + encodeURIComponent(q);
+    if (state.projectId) searchPath += "&project_id=" + encodeURIComponent(state.projectId);
+    api(searchPath).then(function (data) {
       state.tasks = data.items || [];
       renderTasks();
       $("#task-panel-title").textContent = 'Search · "' + q + '"';

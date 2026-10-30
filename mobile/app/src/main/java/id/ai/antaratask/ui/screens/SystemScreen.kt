@@ -2,6 +2,7 @@ package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -19,10 +22,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import id.ai.antaratask.MainViewModel
 import id.ai.antaratask.UiState
+import id.ai.antaratask.data.Account
 import id.ai.antaratask.data.Usage
 import id.ai.antaratask.ui.theme.GtmColors
 
@@ -38,7 +45,9 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
             .padding(horizontal = 20.dp, vertical = 22.dp)
     ) {
         Text("Usage & device", style = MaterialTheme.typography.headlineLarge, color = Color.White)
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(14.dp))
+        ProfileCard(account = state.account, onSignOut = { viewModel.logout() })
+        Spacer(Modifier.height(14.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             StatCard(usage?.tasks?.toString() ?: "—", "Tasks", "local SQLite", Modifier.weight(1f))
@@ -82,6 +91,71 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
         }
 
         Spacer(Modifier.height(90.dp))
+    }
+}
+
+@Composable
+private fun ProfileCard(account: Account?, onSignOut: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(22.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFFE9DDFF), Color(0xFFD5E4FF))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val initial = (account?.name?.trim()?.takeIf { it.isNotEmpty() }
+                        ?: account?.email ?: "?").first().uppercase()
+                    Text(
+                        initial,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF3A3156)
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        account?.name?.takeIf { it.isNotBlank() } ?: account?.email
+                            ?: "Signed in",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        account?.email ?: "Loading profile…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        "Google account",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GtmColors.speakAccent
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onSignOut,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Sign out") }
+        }
     }
 }
 

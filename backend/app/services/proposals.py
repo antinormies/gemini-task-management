@@ -20,6 +20,7 @@ from ..ai.schemas import (
 )
 from ..config import Settings
 from ..models import AIProposal, AIRun, Project, Task
+from ..tenancy import account_id_for
 from ..timeutils import human_short_key, iso, now_iso, now_utc, tz
 from . import tasks as task_service
 from .errors import ActionError, NotFound
@@ -96,7 +97,11 @@ def validate_actions(
             seen_refs.add(action.client_ref)
             if action.project_id:
                 project = session.get(Project, action.project_id)
-                if not project or project.archived_at:
+                if (
+                    not project
+                    or project.archived_at
+                    or project.account_id != account_id_for(session)
+                ):
                     raise ActionError("create_task project does not exist")
             if action.parent_ref and action.parent_ref not in create_refs:
                 task_service.get_task(session, action.parent_ref)
@@ -122,7 +127,11 @@ def validate_actions(
                 raise ActionError("update_task has no changes")
             if changes.get("project_id"):
                 project = session.get(Project, changes["project_id"])
-                if not project or project.archived_at:
+                if (
+                    not project
+                    or project.archived_at
+                    or project.account_id != account_id_for(session)
+                ):
                     raise ActionError("update_task project does not exist")
             preview.append(
                 {
@@ -228,7 +237,7 @@ def apply_proposal(
     session: Session, proposal_id: str, settings: Settings
 ) -> tuple[AIProposal, list[Task]]:
     proposal = session.get(AIProposal, proposal_id)
-    if not proposal:
+    if not proposal or proposal.account_id != account_id_for(session):
         raise NotFound("Proposal not found")
     if proposal.status != "pending":
         raise ActionError("Proposal is no longer pending")
@@ -351,7 +360,7 @@ def apply_proposal(
 
 def undo_proposal(session: Session, proposal_id: str) -> tuple[AIProposal, list[Task]]:
     proposal = session.get(AIProposal, proposal_id)
-    if not proposal:
+    if not proposal or proposal.account_id != account_id_for(session):
         raise NotFound("Proposal not found")
     if proposal.status != "applied":
         raise ActionError("Only applied proposals can be undone")
@@ -387,6 +396,8 @@ def undo_proposal(session: Session, proposal_id: str) -> tuple[AIProposal, list[
 
 def proposal_payload(session: Session, proposal: AIProposal) -> dict:
     run = session.get(AIRun, proposal.ai_run_id)
+    if run is not None and run.account_id != proposal.account_id:
+        run = None
     provider = None
     if run:
         try:

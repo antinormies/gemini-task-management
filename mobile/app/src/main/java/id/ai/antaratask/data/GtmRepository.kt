@@ -18,13 +18,20 @@ class GtmRepository(
         api.token = value
     }
 
-    suspend fun autoPair(): Boolean = withContext(Dispatchers.IO) {
-        val body = JSONObject().put("device_name", store.deviceName)
-        val response = api.request("POST", "/api/auth/auto-pair", body)
+    suspend fun loginWithGoogle(idToken: String): Boolean = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("id_token", idToken)
+            .put("device_name", store.deviceName)
+        val response = api.request("POST", "/api/auth/google", body)
         val token = response?.optString("token").orEmpty()
         if (token.isBlank()) return@withContext false
         setToken(token)
         true
+    }
+
+    suspend fun logout() = withContext(Dispatchers.IO) {
+        runCatching { api.request("POST", "/api/auth/logout", JSONObject()) }
+        setToken(null)
     }
 
     suspend fun tasks(view: String, projectId: String? = null): TaskBundle = withContext(Dispatchers.IO) {
@@ -137,6 +144,11 @@ class GtmRepository(
 
     suspend fun usage(): Usage? = withContext(Dispatchers.IO) {
         api.request("GET", "/api/usage?days=7")?.let { Usage.from(it) }
+    }
+
+    suspend fun account(): Account? = withContext(Dispatchers.IO) {
+        val json = api.request("GET", "/api/auth/me") ?: return@withContext null
+        json.optJSONObject("account")?.let { Account.from(it) }
     }
 
     suspend fun devices(): List<Device> = withContext(Dispatchers.IO) {
