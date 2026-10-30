@@ -13,7 +13,7 @@
       }
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="/static/css/app.css?v=20261031a">
+  <link rel="stylesheet" href="/static/css/app.css?v=20261031c">
 </head>
 <body data-view="{{ view }}" data-project-id="{{ project_id }}">
 
@@ -102,6 +102,70 @@
         <div class="sidebar-note">Account-scoped · Google secured</div>
       </div>
     </aside>
+
+
+    <div class="mobile-nav">
+      <nav class="mobile-bar" aria-label="Mobile navigation">
+        <button class="mobile-menu-btn" id="mobile-menu-btn" type="button"
+                aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+          <span aria-hidden="true">☰</span>
+        </button>
+        <div class="mobile-breadcrumb">
+          {% if view != 'all' and view != 'settings' %}
+          <a href="/all{% if project_id %}?project={{ project_id }}{% endif %}">All tasks</a>
+          <span class="mobile-breadcrumb-sep">/</span>
+          {% endif %}
+          <span class="mobile-breadcrumb-current">{{ view_label }}</span>
+        </div>
+        <a class="mobile-account-link" href="/settings" aria-label="Account settings">
+          {% if account.picture %}
+          <img class="mobile-account-avatar" src="{{ account.picture }}" alt="">
+          {% else %}
+          <span class="mobile-account-avatar">{{ (account.name or account.email or '?')[0]|upper }}</span>
+          {% endif %}
+        </a>
+      </nav>
+
+      <div class="mobile-menu" id="mobile-menu" hidden>
+        <div class="mobile-menu-account">
+          {% if account.picture %}
+          <img class="mobile-menu-avatar" src="{{ account.picture }}" alt="">
+          {% else %}
+          <span class="mobile-menu-avatar">{{ (account.name or account.email or '?')[0]|upper }}</span>
+          {% endif %}
+          <div class="mobile-menu-identity">
+            <strong>{{ account.name or account.email }}</strong>
+            <small>{{ account.email }}</small>
+          </div>
+        </div>
+
+        <div class="mobile-menu-group">
+          <p class="mobile-menu-label">Views</p>
+          {% for key, label in [('all', 'All tasks'), ('backlog', 'Backlog'), ('research', 'Research'), ('sprint', 'Sprint'), ('review', 'Review'), ('done', 'Done')] %}
+          <a class="mobile-menu-link{% if view == key %} is-active{% endif %}"
+             href="/{{ key }}{% if project_id %}?project={{ project_id }}{% endif %}">{{ label }}</a>
+          {% endfor %}
+        </div>
+
+        <div class="mobile-menu-group">
+          <p class="mobile-menu-label">Projects</p>
+          {% for p in projects %}
+          <a class="mobile-menu-link{% if project_id == p.id %} is-active{% endif %}" href="/projects/{{ p.id }}">
+            <span class="project-dot" style="background: {{ p.color }}"></span>
+            <span>{{ p.name }}</span>
+          </a>
+          {% endfor %}
+          {% if not projects %}<p class="muted mobile-menu-empty">No projects yet</p>{% endif %}
+        </div>
+
+        <div class="mobile-menu-group">
+          <a class="mobile-menu-link{% if view == 'settings' %} is-active{% endif %}" href="/settings">Settings &amp; system</a>
+          <form method="post" action="/logout">
+            <button class="mobile-menu-signout" type="submit">Sign out</button>
+          </form>
+        </div>
+      </div>
+    </div>
 
     <main class="main">
       <header class="topbar">
@@ -250,6 +314,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="/static/js/app.js?v=20261031a"></script>
+  <script src="/static/js/app.js?v=20261031c"></script>
 </body>
 </html>

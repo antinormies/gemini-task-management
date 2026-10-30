@@ -49,10 +49,30 @@ def _context(
         project_service.project_payload(session, p) for p in project_service.list_projects(session)
     ]
     selected_project = next((p for p in projects if p["id"] == project_id), None)
+    view_labels = {
+        "all": "All tasks",
+        "backlog": "Backlog",
+        "research": "Research",
+        "sprint": "Sprint",
+        "review": "Review",
+        "done": "Done",
+        "settings": "Settings & system",
+        "today": "Today",
+        "inbox": "Backlog",
+        "upcoming": "Upcoming",
+        "anytime": "Anytime",
+        "waiting": "Review",
+    }
+    view_label = (
+        selected_project["name"]
+        if view == "projects" and selected_project
+        else view_labels.get(view, view.replace("_", " ").title())
+    )
     return {
         "view": view,
         "project_id": project_id or "",
         "project_name": selected_project["name"] if selected_project else "All projects",
+        "view_label": view_label,
         "account": {
             "name": account.name or account.email,
             "email": account.email,

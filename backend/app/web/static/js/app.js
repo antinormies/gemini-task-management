@@ -719,6 +719,35 @@
       }
     });
   }
+  var mobileNav = $(".mobile-nav");
+  var mobileMenuBtn = $("#mobile-menu-btn");
+  var mobileMenu = $("#mobile-menu");
+  function closeMobileMenu() {
+    if (!mobileMenu || !mobileMenuBtn) return;
+    mobileMenu.hidden = true;
+    mobileMenuBtn.setAttribute("aria-expanded", "false");
+  }
+  if (mobileNav && mobileMenuBtn && mobileMenu) {
+    mobileMenuBtn.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var opening = mobileMenu.hidden;
+      mobileMenu.hidden = !opening;
+      mobileMenuBtn.setAttribute("aria-expanded", opening ? "true" : "false");
+      if (opening) {
+        var first = mobileMenu.querySelector(".mobile-menu-link");
+        if (first) first.focus();
+      }
+    });
+    mobileMenu.addEventListener("click", function (ev) {
+      if (ev.target.closest("a, button")) closeMobileMenu();
+    });
+    document.addEventListener("click", function (ev) {
+      if (!mobileNav.contains(ev.target)) closeMobileMenu();
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") closeMobileMenu();
+    });
+  }
   $$("#view-tabs .tab-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       $$("#view-tabs .tab-btn").forEach(function (b) { b.classList.toggle("is-active", b === btn); });
