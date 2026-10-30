@@ -56,6 +56,54 @@ class AIResult:
     usage: dict = field(default_factory=dict)
 
 
+def _gateway_error(status: int, body: str) -> AIError:
+    """Turn a gateway HTTP error into a stable, user-facing AI error."""
+    code = ""
+    message = ""
+    request_id = ""
+    try:
+        data = json.loads(body)
+        if isinstance(data, dict):
+            code = str(data.get("code") or "")
+            message = str(data.get("message") or "")
+            request_id = str(data.get("requestId") or "")
+    except json.JSONDecodeError, TypeError:
+        pass
+    reference = f" (request {request_id})" if request_id else ""
+    if code == "UNAUTHENTICATED" and "firebase" in message.lower():
+        return AIError(
+            "AI_AUTH_FIREBASE",
+            "AI is unavailable because the gateway requires a Firebase UID. "
+            "GTM could not assert a UID for this request. Check the account UID configuration."
+            + reference,
+        )
+    if status in (401, 403):
+        return AIError(
+            "AI_AUTH",
+            "AI gateway authentication failed. Check the app client key and capability mapping."
+            + reference,
+        )
+    if status == 402:
+        return AIError(
+            "AI_QUOTA",
+            "AI credits are exhausted. Check the gateway balance." + reference,
+        )
+    if status == 429:
+        return AIError(
+            "AI_RATE_LIMIT",
+            "AI is rate-limited. Try again in a moment." + reference,
+        )
+    if status >= 500:
+        return AIError(
+            "AI_UNAVAILABLE",
+            "The AI gateway is temporarily unavailable. Try again." + reference,
+        )
+    return AIError(
+        "AI_REQUEST",
+        (message or "The AI gateway rejected the request.") + reference,
+    )
+
+
 class GatewayChatClient:
     """App-client chat stream against the MemeChat Gateway.
 
@@ -68,7 +116,12 @@ class GatewayChatClient:
     def __init__(self, settings: Settings):
         self.settings = settings
 
-    async def run(self, prompt: str, system: str | None = None) -> AIResult:
+    async def run(
+        self,
+        prompt: str,
+        system: str | None = None,
+        firebase_uid: str | None = None,
+    ) -> AIResult:
         if not self.settings.ai_api_key:
             raise AIError("AI_NOT_CONFIGURED", "GTM_AI_API_KEY is empty")
         if not self.settings.ai_base_url:
@@ -84,6 +137,9 @@ class GatewayChatClient:
             "Accept": "text/event-stream",
             "User-Agent": "gtm-backend/0.1",
         }
+        asserted_uid = (firebase_uid or self.settings.ai_firebase_uid).strip()
+        if asserted_uid:
+            headers["X-Firebase-Uid"] = asserted_uid
         timeout = httpx.Timeout(self.settings.ai_timeout_seconds, connect=20.0)
         started = time.monotonic()
         text = ""
@@ -109,10 +165,7 @@ class GatewayChatClient:
                     ) as response:
                         if response.status_code != 200:
                             body = (await response.aread()).decode("utf-8", "replace")
-                            raise AIError(
-                                "AI_HTTP_ERROR",
-                                f"gateway HTTP {response.status_code}: {body[:600]}",
-                            )
+                            raise _gateway_error(response.status_code, body)
                         async for line in response.aiter_lines():
                             if line.startswith(":"):
                                 continue

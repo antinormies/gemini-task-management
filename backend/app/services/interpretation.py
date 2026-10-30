@@ -20,6 +20,13 @@ from . import projects as project_service
 from . import proposals as proposal_service
 from .errors import NotFound, ValidationError
 
+
+def _asserted_firebase_uid(settings: Settings, account_id: str | None) -> str:
+    if settings.ai_firebase_uid:
+        return settings.ai_firebase_uid
+    return f"gtm-{account_id}" if account_id else ""
+
+
 STAGE_MOVE = re.compile(
     r"\bmove\b[^.]*?\bto\b\s+(backlog|research|sprint|review|done)\b", re.IGNORECASE
 )
@@ -138,6 +145,7 @@ async def process_text_run(
         if not run or run.status not in ("queued", "running"):
             return
         set_session_account(session, run.account_id)
+        asserted_uid = _asserted_firebase_uid(settings, run.account_id)
         run.status = "running"
         run.started_at = now_iso()
         context = json.loads(run.context_json or "{}")
@@ -163,7 +171,7 @@ async def process_text_run(
             )
     started = datetime.now()
     try:
-        result = await ai_service.interpret(prompt)
+        result = await ai_service.interpret(prompt, firebase_uid=asserted_uid)
     except AIError as exc:
         with db.session() as session:
             run = session.get(AIRun, run_id)
@@ -242,6 +250,7 @@ async def interpret_voice(
         session.add(run)
         session.flush()
         set_session_account(session, run.account_id)
+        asserted_uid = _asserted_firebase_uid(settings, account_id)
         run_id = run.id
         if settings.ai_capability == "chat.standard":
             prompt = build_compact_prompt(
@@ -266,7 +275,7 @@ async def interpret_voice(
             )
     started = datetime.now()
     try:
-        result = await ai_service.interpret(prompt)
+        result = await ai_service.interpret(prompt, firebase_uid=asserted_uid)
     except AIError as exc:
         with db.session() as session:
             run = session.get(AIRun, run_id)

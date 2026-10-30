@@ -25,7 +25,8 @@ class AIService:
         *,
         provider: str | None = None,
         system: str | None = None,
+        firebase_uid: str | None = None,
     ) -> AIResult:
         if not self.settings.ai_enabled:
             raise AIError("AI_DISABLED", "AI is disabled")
-        return await self.provider.run(prompt, system=system)
+        return await self.provider.run(prompt, system=system, firebase_uid=firebase_uid)

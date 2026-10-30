@@ -40,19 +40,40 @@
         try { data = text ? JSON.parse(text) : null; } catch (e) { data = { detail: text }; }
         if (!res.ok) {
           var detail = data && data.detail ? data.detail : (data && data.error ? data.error.message : res.statusText);
-          throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+          if (detail && typeof detail === "object") {
+            if (Array.isArray(detail)) {
+              detail = detail.map(function (item) { return item && item.msg ? item.msg : ""; }).filter(Boolean).join("; ");
+            } else {
+              detail = detail.message || detail.code || "Request failed";
+            }
+          }
+          var error = new Error(typeof detail === "string" && detail ? detail : "Request failed");
+          if (data && data.detail && typeof data.detail === "object") error.code = data.detail.code;
+          throw error;
         }
         return data;
       });
     });
   }
   function toast(message, isError) {
-    var el = $("#toast");
-    el.textContent = message;
-    el.classList.toggle("is-error", !!isError);
-    el.classList.add("is-on");
-    clearTimeout(el._timer);
-    el._timer = setTimeout(function () { el.classList.remove("is-on"); }, 2800);
+    var stack = $("#notifications");
+    if (!stack) return;
+    var card = document.createElement("div");
+    card.className = "notification " + (isError ? "is-error" : "is-success");
+    card.innerHTML =
+      '<span class="notification-icon" aria-hidden="true">' + (isError ? "!" : "✓") + "</span>" +
+      '<div class="notification-text">' + esc(message || "Something went wrong") + "</div>" +
+      '<button class="notification-close" type="button" aria-label="Dismiss">×</button>';
+    stack.appendChild(card);
+    requestAnimationFrame(function () { card.classList.add("is-on"); });
+    var timer = setTimeout(dismiss, 3000);
+    function dismiss() {
+      clearTimeout(timer);
+      card.classList.add("is-leaving");
+      setTimeout(function () { card.remove(); }, 180);
+    }
+    card.querySelector(".notification-close").addEventListener("click", dismiss);
+    while (stack.children.length > 4) stack.firstElementChild.remove();
   }
   function priorityClass(p) {
     return "priority priority-" + (p === "none" ? "none" : p || "none");
@@ -399,7 +420,10 @@
     setCommandStatus("AI is reading the request…");
     api("/api/ai/interpret", { method: "POST", body: { text: text, view: state.view, project_id: state.projectId || null } }).then(function (data) {
       pollRun(data.run_id);
-    }).catch(function (err) { setCommandStatus(err.message, true); });
+    }).catch(function (err) {
+      setCommandStatus(err.message, true);
+      toast(err.message, true);
+    });
   }
   function pollRun(runId) {
     clearTimeout(state.pollTimer);
@@ -413,7 +437,9 @@
           return;
         }
         if (run.status === "failed") {
-          setCommandStatus(run.error_message || "AI could not interpret that.", true);
+          var message = run.error_message || "AI could not interpret that.";
+          setCommandStatus(message, true);
+          toast(message, true);
           return;
         }
         if (run.proposal) {
@@ -423,7 +449,10 @@
         } else {
           setCommandStatus("No changes proposed.");
         }
-      }).catch(function (err) { setCommandStatus(err.message, true); });
+      }).catch(function (err) {
+        setCommandStatus(err.message, true);
+        toast(err.message, true);
+      });
     }
     tick();
   }

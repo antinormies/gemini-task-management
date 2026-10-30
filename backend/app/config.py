@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     ai_base_url: str = "https://gateway.dream-team.works/v1/chat/stream"
     ai_api_key: str = ""
     ai_model: str = "deepseek-v4.1-flash"
+    ai_firebase_uid: str = ""
     ai_capability: str = "chat.standard"
     ai_max_output_tokens: int = 1024
     ai_timeout_seconds: int = 120

@@ -62,7 +62,12 @@ class FakeAI:
         self.calls = 0
 
     async def interpret(
-        self, prompt: str, *, provider: str | None = None, system: str | None = None
+        self,
+        prompt: str,
+        *,
+        provider: str | None = None,
+        system: str | None = None,
+        firebase_uid: str | None = None,
     ) -> AIResult:
         self.calls += 1
         return AIResult(
