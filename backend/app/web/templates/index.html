@@ -44,22 +44,22 @@
         <span class="brand-name">Antara Task AI</span>
       </div>
       <nav class="nav">
-        <a class="nav-item {% if view == 'all' %}is-active{% endif %}" href="/all">
+        <a class="nav-item {% if view == 'all' %}is-active{% endif %}" href="/all{% if project_id %}?project={{ project_id }}{% endif %}">
           <svg class="icon nav-icon"><use href="#i-layers"></use></svg><span>All tasks</span><span class="nav-count" data-count="all">{{ counts.all }}</span>
         </a>
-        <a class="nav-item {% if view == 'backlog' %}is-active{% endif %}" href="/backlog">
+        <a class="nav-item {% if view == 'backlog' %}is-active{% endif %}" href="/backlog{% if project_id %}?project={{ project_id }}{% endif %}">
           <svg class="icon nav-icon"><use href="#i-inbox"></use></svg><span>Backlog</span><span class="nav-count" data-count="backlog">{{ counts.backlog }}</span>
         </a>
-        <a class="nav-item {% if view == 'research' %}is-active{% endif %}" href="/research">
+        <a class="nav-item {% if view == 'research' %}is-active{% endif %}" href="/research{% if project_id %}?project={{ project_id }}{% endif %}">
           <svg class="icon nav-icon"><use href="#i-search"></use></svg><span>Research</span><span class="nav-count" data-count="research">{{ counts.research }}</span>
         </a>
-        <a class="nav-item {% if view == 'sprint' %}is-active{% endif %}" href="/sprint">
+        <a class="nav-item {% if view == 'sprint' %}is-active{% endif %}" href="/sprint{% if project_id %}?project={{ project_id }}{% endif %}">
           <svg class="icon nav-icon"><use href="#i-wheel"></use></svg><span>Sprint</span><span class="nav-count" data-count="sprint">{{ counts.sprint }}</span>
         </a>
-        <a class="nav-item {% if view == 'review' %}is-active{% endif %}" href="/review">
+        <a class="nav-item {% if view == 'review' %}is-active{% endif %}" href="/review{% if project_id %}?project={{ project_id }}{% endif %}">
           <svg class="icon nav-icon"><use href="#i-clock"></use></svg><span>Review</span><span class="nav-count" data-count="review">{{ counts.review }}</span>
         </a>
-        <a class="nav-item {% if view == 'done' %}is-active{% endif %}" href="/done">
+        <a class="nav-item {% if view == 'done' %}is-active{% endif %}" href="/done{% if project_id %}?project={{ project_id }}{% endif %}">
           <svg class="icon nav-icon"><use href="#i-check"></use></svg><span>Done</span><span class="nav-count" data-count="done">{{ counts.done }}</span>
         </a>
       </nav>
@@ -116,6 +116,17 @@
             <input id="search-input" type="search" placeholder="Search tasks" autocomplete="off" aria-label="Search tasks">
             <kbd>/</kbd>
           </div>
+          {% if view != 'settings' %}
+          <label class="project-filter">
+            <span>Project</span>
+            <select id="project-filter" aria-label="Filter by project">
+              <option value="">All projects</option>
+              {% for p in projects %}
+              <option value="{{ p.id }}"{% if project_id == p.id %} selected{% endif %}>{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          {% endif %}
           <button class="btn btn-quiet" id="focus-command"><svg class="icon"><use href="#i-sparkles"></use></svg>Ask AI<kbd>⌘K</kbd></button>
           <button class="btn btn-primary" id="quick-add-btn"><svg class="icon"><use href="#i-plus"></use></svg>New task</button>
           <button class="icon-btn theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">

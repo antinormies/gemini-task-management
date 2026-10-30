@@ -202,15 +202,23 @@
       projects: "Active work for this project."
     };
     var project = state.projects.filter(function (p) { return p.id === state.projectId; })[0];
-    $("#view-title").textContent = project ? project.name : (titles[state.view] || "Tasks");
-    $("#view-subtitle").textContent = subs[state.view] || "";
-    $("#eyebrow").textContent = state.view === "settings" ? "System" : project ? "Project" : state.view.charAt(0).toUpperCase() + state.view.slice(1);
+    var filtered = !!state.projectId;
+    var title = state.view === "projects" && project ? project.name : (titles[state.view] || "Tasks");
+    $("#view-title").textContent = title;
+    $("#view-subtitle").textContent = filtered && state.view !== "projects" && project
+      ? "Filtered by " + project.name
+      : (subs[state.view] || "");
+    $("#eyebrow").textContent = state.view === "settings"
+      ? "System"
+      : filtered
+        ? "Project filter"
+        : state.view.charAt(0).toUpperCase() + state.view.slice(1);
     $("#context-date").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   }
   function loadTasks() {
     var params = new URLSearchParams();
     params.set("view", state.mode === "board" ? "board" : (state.view === "settings" ? "today" : state.view));
-    if (state.view === "projects" && state.projectId) params.set("project_id", state.projectId);
+    if (state.projectId) params.set("project_id", state.projectId);
     if (state.query) params.set("q", state.query);
     if (state.mode === "board") params.set("include_done", "true");
     return api("/api/tasks?" + params.toString()).then(function (data) {
@@ -349,7 +357,9 @@
   function openQuickAdd() {
     var overlay = $("#quick-add-layer");
     if (overlay) { overlay.hidden = false; return; }
-    var optionHtml = state.projects.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + "</option>"; }).join("");
+    var optionHtml = state.projects.map(function (p) {
+      return '<option value="' + esc(p.id) + '"' + (p.id === state.projectId ? " selected" : "") + ">" + esc(p.name) + "</option>";
+    }).join("");
     var el = document.createElement("div");
     el.id = "quick-add-layer";
     el.className = "modal-backdrop quick-add-layer";
@@ -680,13 +690,30 @@
     var meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.setAttribute("content", isDark ? "dark" : "light");
   });
+  var projectFilter = $("#project-filter");
+  if (projectFilter) {
+    projectFilter.addEventListener("change", function () {
+      var id = projectFilter.value;
+      if (state.view === "projects") {
+        window.location.href = id ? "/projects/" + encodeURIComponent(id) : "/all";
+        return;
+      }
+      var url = window.location.pathname;
+      if (id) url += "?project=" + encodeURIComponent(id);
+      window.location.href = url;
+    });
+  }
   $$("#view-tabs .tab-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       $$("#view-tabs .tab-btn").forEach(function (b) { b.classList.toggle("is-active", b === btn); });
       var view = btn.getAttribute("data-quick-view");
       if (view === "board") {
         // Projects keep their own board; global stage views jump to the full board.
-        if (state.view !== "all" && state.view !== "projects") { window.location.href = "/all"; return; }
+        if (state.view !== "all" && state.view !== "projects") {
+          var boardSuffix = state.projectId ? "?project=" + encodeURIComponent(state.projectId) : "";
+          window.location.href = "/all" + boardSuffix;
+          return;
+        }
         state.mode = "board"; loadTasks();
       } else if (view === "list") {
         state.mode = "list"; loadTasks();
@@ -698,7 +725,9 @@
     var q = ev.target.value.trim();
     if (!q) { refresh(); return; }
     state.mode = "list"; state.query = q;
-    api("/api/search?q=" + encodeURIComponent(q)).then(function (data) {
+    var searchPath = "/api/search?q=" + encodeURIComponent(q);
+    if (state.projectId) searchPath += "&project_id=" + encodeURIComponent(state.projectId);
+    api(searchPath).then(function (data) {
       state.tasks = data.items || [];
       renderTasks();
       $("#task-panel-title").textContent = 'Search · "' + q + '"';

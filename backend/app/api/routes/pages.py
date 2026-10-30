@@ -28,7 +28,14 @@ def _context(
     project_id: str | None = None,
 ) -> dict:
     counts = {
-        key: len(task_service.list_tasks(session, view=view_name, tz_name=settings.timezone))
+        key: len(
+            task_service.list_tasks(
+                session,
+                view=view_name,
+                project_id=project_id or None,
+                tz_name=settings.timezone,
+            )
+        )
         for key, view_name in {
             "backlog": "backlog",
             "research": "research",
@@ -102,16 +109,21 @@ def logout_page():
 
 
 @router.get("/", response_class=HTMLResponse)
-def home_page(request: Request, account: Account | None = Depends(get_web_account)):
+def home_page(
+    request: Request,
+    project: str | None = None,
+    account: Account | None = Depends(get_web_account),
+):
     if not account:
         return RedirectResponse("/login", status_code=303)
-    return _render(request, account, "all")
+    return _render(request, account, "all", project)
 
 
 @router.get("/{view}", response_class=HTMLResponse)
 def view_page(
     view: str,
     request: Request,
+    project: str | None = None,
     account: Account | None = Depends(get_web_account),
 ):
     if not account:
@@ -130,8 +142,8 @@ def view_page(
         "anytime",
         "waiting",
     }:
-        return _render(request, account, "all")
-    return _render(request, account, LEGACY_VIEWS.get(view, view))
+        return _render(request, account, "all", project)
+    return _render(request, account, LEGACY_VIEWS.get(view, view), project)
 
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)

@@ -111,3 +111,36 @@ def test_legacy_status_maps_and_moves_to_sprint(client):
     )
     assert response.status_code == 200, response.text
     assert response.json()["task"]["status"] == "sprint"
+
+
+def test_project_filter_applies_to_views_and_counts(client):
+    first = client.post(
+        "/api/projects", json={"name": "Filter one"}, headers={"X-GTM-Request": "1"}
+    ).json()["project"]
+    second = client.post(
+        "/api/projects", json={"name": "Filter two"}, headers={"X-GTM-Request": "1"}
+    ).json()["project"]
+    task = client.post(
+        "/api/tasks",
+        json={"title": "Only in first", "project_id": first["id"], "status": "backlog"},
+        headers={"X-GTM-Request": "1"},
+    )
+    assert task.status_code == 200, task.text
+
+    filtered = client.get("/api/tasks?view=all&project_id=" + first["id"]).json()
+    assert filtered["counts"]["all"] == 1
+    assert [item["title"] for item in filtered["items"]] == ["Only in first"]
+    other = client.get("/api/tasks?view=all&project_id=" + second["id"]).json()
+    assert other["counts"]["all"] == 0
+    assert other["items"] == []
+
+    backlog = client.get("/backlog?project=" + first["id"])
+    assert backlog.status_code == 200
+    assert "Filter one" in backlog.text
+    assert "selected" in backlog.text
+    assert 'data-count="all">1<' in backlog.text
+
+    search = client.get("/api/search?q=Only&project_id=" + second["id"]).json()
+    assert search["items"] == []
+    search = client.get("/api/search?q=Only&project_id=" + first["id"]).json()
+    assert [item["title"] for item in search["items"]] == ["Only in first"]

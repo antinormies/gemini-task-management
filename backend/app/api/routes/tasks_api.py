@@ -15,7 +15,7 @@ from ..models import OrderRequest, TaskCreate, TaskUpdate
 router = APIRouter(prefix="/api", tags=["tasks"])
 
 
-def _counts(session: Session, settings) -> dict:
+def _counts(session: Session, settings, project_id: str | None = None) -> dict:
     names = {
         "backlog": "backlog",
         "research": "research",
@@ -25,7 +25,14 @@ def _counts(session: Session, settings) -> dict:
         "all": "all",
     }
     return {
-        key: len(task_service.list_tasks(session, view=view, tz_name=settings.timezone))
+        key: len(
+            task_service.list_tasks(
+                session,
+                view=view,
+                project_id=project_id,
+                tz_name=settings.timezone,
+            )
+        )
         for key, view in names.items()
     }
 
@@ -74,7 +81,7 @@ def list_tasks(
     payload = {
         "items": [task_service.task_payload(session, t) for t in rows],
         "view": view,
-        "counts": _counts(session, settings),
+        "counts": _counts(session, settings, project_id),
     }
     if view == "board":
         payload["board"] = task_service.board_payload(session, rows)
@@ -221,14 +228,20 @@ def set_tags(
 @router.get("/search")
 def search(
     q: str = Query(min_length=1),
+    project_id: str | None = None,
     account: Account = Depends(get_account),
     session: Session = Depends(get_db),
     settings=Depends(get_settings),
 ):
     rows = task_service.list_tasks(
-        session, view="all", q=q, include_done=True, tz_name=settings.timezone
+        session,
+        view="all",
+        project_id=project_id,
+        q=q,
+        include_done=True,
+        tz_name=settings.timezone,
     )
     return {
         "items": [task_service.task_payload(session, t) for t in rows[:50]],
-        "counts": _counts(session, settings),
+        "counts": _counts(session, settings, project_id),
     }
