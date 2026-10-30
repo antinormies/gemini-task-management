@@ -2,6 +2,7 @@ package id.ai.antaratask
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import id.ai.antaratask.data.Account
 import id.ai.antaratask.data.ApiException
 import id.ai.antaratask.data.Device
 import id.ai.antaratask.data.GtmRepository
@@ -27,6 +28,7 @@ data class UiState(
     val tab: Tab = Tab.SPEAK,
     val tasks: List<Task> = emptyList(),
     val projects: List<Project> = emptyList(),
+    val account: Account? = null,
     val counts: Map<String, Int> = emptyMap(),
     val selected: Task? = null,
     val proposal: Proposal? = null,
@@ -38,6 +40,20 @@ data class UiState(
     val health: Health? = null,
     val usage: Usage? = null,
     val devices: List<Device> = emptyList()
+)
+
+private data class DashboardData(
+    val account: Account?,
+    val projects: List<Project>,
+    val tasks: List<Task>,
+    val counts: Map<String, Int>
+)
+
+private data class SystemData(
+    val account: Account?,
+    val health: Health?,
+    val usage: Usage?,
+    val devices: List<Device>
 )
 
 class MainViewModel(
@@ -91,17 +107,19 @@ class MainViewModel(
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
             runCatching {
+                val account = repository.account()
                 val projects = repository.projects()
                 val bundle = repository.tasks("board")
-                Triple(projects, bundle.items, bundle.counts)
-            }.onSuccess { (projects, tasks, counts) ->
+                DashboardData(account, projects, bundle.items, bundle.counts)
+            }.onSuccess { data ->
                 _state.update {
                     it.copy(
                         paired = true,
                         loading = false,
-                        projects = projects,
-                        tasks = tasks,
-                        counts = counts,
+                        account = data.account ?: it.account,
+                        projects = data.projects,
+                        tasks = data.tasks,
+                        counts = data.counts,
                         error = null
                     )
                 }
@@ -114,13 +132,20 @@ class MainViewModel(
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
             runCatching {
+                val account = repository.account()
                 val health = repository.health()
                 val usage = repository.usage()
                 val devices = repository.devices()
-                Triple(health, usage, devices)
-            }.onSuccess { (health, usage, devices) ->
+                SystemData(account, health, usage, devices)
+            }.onSuccess { data ->
                 _state.update {
-                    it.copy(busy = false, health = health, usage = usage, devices = devices)
+                    it.copy(
+                        busy = false,
+                        account = data.account ?: it.account,
+                        health = data.health,
+                        usage = data.usage,
+                        devices = data.devices
+                    )
                 }
             }.onFailure { fail(it) }
         }

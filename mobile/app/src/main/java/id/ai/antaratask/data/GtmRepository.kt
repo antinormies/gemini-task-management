@@ -146,6 +146,11 @@ class GtmRepository(
         api.request("GET", "/api/usage?days=7")?.let { Usage.from(it) }
     }
 
+    suspend fun account(): Account? = withContext(Dispatchers.IO) {
+        val json = api.request("GET", "/api/auth/me") ?: return@withContext null
+        json.optJSONObject("account")?.let { Account.from(it) }
+    }
+
     suspend fun devices(): List<Device> = withContext(Dispatchers.IO) {
         val json = api.request("GET", "/api/auth/devices") ?: JSONObject()
         val result = mutableListOf<Device>()

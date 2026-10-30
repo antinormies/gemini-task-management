@@ -178,6 +178,22 @@ data class Proposal(
     }
 }
 
+data class Account(
+    val id: String,
+    val email: String,
+    val name: String,
+    val picture: String
+) {
+    companion object {
+        fun from(json: JSONObject) = Account(
+            id = json.optString("id"),
+            email = json.optString("email"),
+            name = json.optString("name"),
+            picture = json.optString("picture")
+        )
+    }
+}
+
 data class Device(
     val id: String,
     val name: String,

@@ -527,22 +527,6 @@
     $("#workspace").hidden = true;
     $("#command-area").hidden = true;
     $("#settings-panel").hidden = false;
-    api("/api/health").then(function (health) {
-      var ai = health.ai || {};
-      var lines = [
-        ["App", health.version],
-        ["Database", health.database.ok ? "OK" : "Error"],
-        ["AI provider", ai.provider],
-        ["Model", ai.model || "not configured"],
-        ["Endpoint", ai.configured ? "connected" : "not configured"],
-        ["Voice", health.voice.enabled ? health.voice.provider + " · " + health.voice.input : "disabled"],
-        ["Account", "Google sign-in"]
-      ];
-      $("#health-details").innerHTML = lines.map(function (row) {
-        return '<div class="kv"><span>' + esc(row[0]) + "</span><strong>" + esc(row[1]) + "</strong></div>";
-      }).join("");
-      $("#mini-health").innerHTML = '<div class="health-line"><span class="health-dot ' + (health.database.ok ? "" : "bad") + '"></span>DB ' + (health.database.ok ? "online" : "offline") + '</div><div class="health-line"><span class="health-dot ' + (ai.configured ? "" : "warn") + '"></span>' + esc(ai.configured ? ai.model : "AI not configured") + "</div>";
-    }).catch(function () {});
     api("/api/auth/devices").then(renderDevices).catch(function () {});
   }
   function renderDevices(data) {
@@ -690,17 +674,49 @@
     var meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.setAttribute("content", isDark ? "dark" : "light");
   });
+  function goToProject(id) {
+    if (state.view === "projects") {
+      window.location.href = id ? "/projects/" + encodeURIComponent(id) : "/all";
+      return;
+    }
+    var url = window.location.pathname;
+    if (id) url += "?project=" + encodeURIComponent(id);
+    window.location.href = url;
+  }
   var projectFilter = $("#project-filter");
-  if (projectFilter) {
-    projectFilter.addEventListener("change", function () {
-      var id = projectFilter.value;
-      if (state.view === "projects") {
-        window.location.href = id ? "/projects/" + encodeURIComponent(id) : "/all";
-        return;
+  var projectFilterButton = $("#project-filter-btn");
+  var projectMenu = $("#project-menu");
+  function closeProjectMenu() {
+    if (!projectMenu || !projectFilterButton) return;
+    projectMenu.hidden = true;
+    projectFilterButton.setAttribute("aria-expanded", "false");
+  }
+  if (projectFilter && projectFilterButton && projectMenu) {
+    projectFilterButton.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var opening = projectMenu.hidden;
+      projectMenu.hidden = !opening;
+      projectFilterButton.setAttribute("aria-expanded", opening ? "true" : "false");
+      if (opening) {
+        var target = projectMenu.querySelector(".project-option.is-selected") ||
+          projectMenu.querySelector(".project-option");
+        if (target) target.focus();
       }
-      var url = window.location.pathname;
-      if (id) url += "?project=" + encodeURIComponent(id);
-      window.location.href = url;
+    });
+    projectMenu.addEventListener("click", function (ev) {
+      var option = ev.target.closest(".project-option");
+      if (!option) return;
+      closeProjectMenu();
+      goToProject(option.getAttribute("data-project") || "");
+    });
+    document.addEventListener("click", function (ev) {
+      if (!projectFilter.contains(ev.target)) closeProjectMenu();
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        closeProjectMenu();
+        projectFilterButton.focus();
+      }
     });
   }
   $$("#view-tabs .tab-btn").forEach(function (btn) {

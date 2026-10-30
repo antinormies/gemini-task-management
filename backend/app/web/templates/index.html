@@ -13,7 +13,7 @@
       }
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="/static/css/app.css?v=20261030c">
+  <link rel="stylesheet" href="/static/css/app.css?v=20261031a">
 </head>
 <body data-view="{{ view }}" data-project-id="{{ project_id }}">
 
@@ -117,15 +117,31 @@
             <kbd>/</kbd>
           </div>
           {% if view != 'settings' %}
-          <label class="project-filter">
-            <span>Project</span>
-            <select id="project-filter" aria-label="Filter by project">
-              <option value="">All projects</option>
+          <div class="project-filter" id="project-filter">
+            <button type="button" class="project-filter-btn" id="project-filter-btn"
+                    aria-haspopup="listbox" aria-expanded="false" aria-controls="project-menu">
+              <span class="project-filter-kicker">Project</span>
+              <span class="project-filter-value" id="project-filter-value">{{ project_name }}</span>
+              <svg class="icon icon-sm project-filter-chevron"><use href="#i-chevron-right"></use></svg>
+            </button>
+            <div class="project-menu" id="project-menu" role="listbox" aria-label="Filter by project" hidden>
+              <button type="button" class="project-option{% if not project_id %} is-selected{% endif %}"
+                      data-project="" role="option" aria-selected="{{ 'true' if not project_id else 'false' }}">
+                <span class="project-option-dot project-option-dot--all"></span>
+                <span class="project-option-name">All projects</span>
+                <span class="project-option-check" aria-hidden="true">✓</span>
+              </button>
               {% for p in projects %}
-              <option value="{{ p.id }}"{% if project_id == p.id %} selected{% endif %}>{{ p.name }}</option>
+              <button type="button" class="project-option{% if project_id == p.id %} is-selected{% endif %}"
+                      data-project="{{ p.id }}" role="option" aria-selected="{{ 'true' if project_id == p.id else 'false' }}">
+                <span class="project-dot" style="background: {{ p.color }}"></span>
+                <span class="project-option-name">{{ p.name }}</span>
+                <span class="project-option-check" aria-hidden="true">✓</span>
+              </button>
               {% endfor %}
-            </select>
-          </label>
+              {% if not projects %}<div class="project-menu-empty">No projects yet</div>{% endif %}
+            </div>
+          </div>
           {% endif %}
           <button class="btn btn-quiet" id="focus-command"><svg class="icon"><use href="#i-sparkles"></use></svg>Ask AI<kbd>⌘K</kbd></button>
           <button class="btn btn-primary" id="quick-add-btn"><svg class="icon"><use href="#i-plus"></use></svg>New task</button>
@@ -191,8 +207,8 @@
           </div>
           <div class="settings-card">
             <p class="eyebrow">Devices</p>
-            <h2>Paired devices</h2>
-            <p class="muted">The Android app provisions itself on first launch.</p>
+            <h2>Signed-in devices</h2>
+            <p class="muted">Android devices signed in with your Google account.</p>
             <div class="device-list" id="device-list"></div>
           </div>
           <div class="settings-card">
@@ -203,11 +219,6 @@
               <button class="btn btn-quiet" id="rebuild-btn">Rebuild search index</button>
             </div>
             <div id="maintenance-note" class="muted"></div>
-          </div>
-          <div class="settings-card settings-card--wide">
-            <p class="eyebrow">Diagnostics</p>
-            <h2>Engine</h2>
-            <div id="health-details" class="health-details">Loading…</div>
           </div>
         </div>
       </section>
@@ -239,6 +250,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="/static/js/app.js?v=20261030c"></script>
+  <script src="/static/js/app.js?v=20261031a"></script>
 </body>
 </html>

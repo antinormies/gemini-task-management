@@ -45,18 +45,20 @@ def _context(
             "all": "all",
         }.items()
     }
+    projects = [
+        project_service.project_payload(session, p) for p in project_service.list_projects(session)
+    ]
+    selected_project = next((p for p in projects if p["id"] == project_id), None)
     return {
         "view": view,
         "project_id": project_id or "",
+        "project_name": selected_project["name"] if selected_project else "All projects",
         "account": {
             "name": account.name or account.email,
             "email": account.email,
             "picture": account.picture,
         },
-        "projects": [
-            project_service.project_payload(session, p)
-            for p in project_service.list_projects(session)
-        ],
+        "projects": projects,
         "counts": counts,
         "settings": {
             "timezone": settings.timezone,
