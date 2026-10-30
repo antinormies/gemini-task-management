@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from ...models import Account
+from ...security import SESSION_COOKIE
 from ...services import projects as project_service
 from ...services import tasks as task_service
+from ...tenancy import set_session_account
+from ..deps import get_web_account
 
 router = APIRouter(tags=["pages"])
 TEMPLATES = Jinja2Templates(
@@ -16,7 +20,13 @@ TEMPLATES = Jinja2Templates(
 )
 
 
-def _context(session: Session, settings, view: str, project_id: str | None = None) -> dict:
+def _context(
+    session: Session,
+    settings,
+    account: Account,
+    view: str,
+    project_id: str | None = None,
+) -> dict:
     counts = {
         key: len(task_service.list_tasks(session, view=view_name, tz_name=settings.timezone))
         for key, view_name in {
@@ -31,6 +41,11 @@ def _context(session: Session, settings, view: str, project_id: str | None = Non
     return {
         "view": view,
         "project_id": project_id or "",
+        "account": {
+            "name": account.name or account.email,
+            "email": account.email,
+            "picture": account.picture,
+        },
         "projects": [
             project_service.project_payload(session, p)
             for p in project_service.list_projects(session)
@@ -46,10 +61,11 @@ def _context(session: Session, settings, view: str, project_id: str | None = Non
     }
 
 
-def _render(request: Request, view: str, project_id: str | None = None):
+def _render(request: Request, account: Account, view: str, project_id: str | None = None):
     session = request.app.state.db.sessionmaker()
     try:
-        ctx = _context(session, request.app.state.settings, view, project_id)
+        set_session_account(session, account.id)
+        ctx = _context(session, request.app.state.settings, account, view, project_id)
     finally:
         session.close()
     return TEMPLATES.TemplateResponse(request, "index.html", ctx)
@@ -64,13 +80,42 @@ LEGACY_VIEWS = {
 }
 
 
+@router.get("/login", response_class=HTMLResponse)
+def login_page(
+    request: Request,
+    account: Account | None = Depends(get_web_account),
+):
+    if account:
+        return RedirectResponse("/", status_code=303)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "login.html",
+        {"google_client_id": request.app.state.settings.google_client_id},
+    )
+
+
+@router.post("/logout")
+def logout_page():
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response
+
+
 @router.get("/", response_class=HTMLResponse)
-def home_page(request: Request):
-    return _render(request, "all")
+def home_page(request: Request, account: Account | None = Depends(get_web_account)):
+    if not account:
+        return RedirectResponse("/login", status_code=303)
+    return _render(request, account, "all")
 
 
 @router.get("/{view}", response_class=HTMLResponse)
-def view_page(view: str, request: Request):
+def view_page(
+    view: str,
+    request: Request,
+    account: Account | None = Depends(get_web_account),
+):
+    if not account:
+        return RedirectResponse("/login", status_code=303)
     if view not in {
         "all",
         "backlog",
@@ -85,10 +130,16 @@ def view_page(view: str, request: Request):
         "anytime",
         "waiting",
     }:
-        return _render(request, "all")
-    return _render(request, LEGACY_VIEWS.get(view, view))
+        return _render(request, account, "all")
+    return _render(request, account, LEGACY_VIEWS.get(view, view))
 
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)
-def project_page(project_id: str, request: Request):
-    return _render(request, "projects", project_id)
+def project_page(
+    project_id: str,
+    request: Request,
+    account: Account | None = Depends(get_web_account),
+):
+    if not account:
+        return RedirectResponse("/login", status_code=303)
+    return _render(request, account, "projects", project_id)

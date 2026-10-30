@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..config import Settings
 from ..db import Database
 from ..models import AIProposal, AIRun, Device, Project, Task
+from ..tenancy import account_id_for
 from ..timeutils import iso, now_utc
 
 
@@ -58,16 +59,32 @@ def usage_summary(session: Session, settings: Settings, db: Database, days: int 
             "workspace_bytes": _dir_size(settings.workspace_dir),
         },
         "counts": {
-            "tasks": session.scalar(select(func.count(Task.id)).where(Task.archived_at.is_(None)))
+            "tasks": session.scalar(
+                select(func.count(Task.id)).where(
+                    Task.account_id == account_id_for(session),
+                    Task.archived_at.is_(None),
+                )
+            )
             or 0,
             "projects": session.scalar(
-                select(func.count(Project.id)).where(Project.archived_at.is_(None))
+                select(func.count(Project.id)).where(
+                    Project.account_id == account_id_for(session),
+                    Project.archived_at.is_(None),
+                )
             )
             or 0,
             "devices": session.scalar(
-                select(func.count(Device.id)).where(Device.revoked_at.is_(None))
+                select(func.count(Device.id)).where(
+                    Device.account_id == account_id_for(session),
+                    Device.revoked_at.is_(None),
+                )
             )
             or 0,
-            "proposals": session.scalar(select(func.count(AIProposal.id))) or 0,
+            "proposals": session.scalar(
+                select(func.count(AIProposal.id)).where(
+                    AIProposal.account_id == account_id_for(session)
+                )
+            )
+            or 0,
         },
     }

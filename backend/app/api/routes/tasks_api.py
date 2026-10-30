@@ -3,12 +3,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
+from ...models import Account
 from ...services import projects as project_service
 from ...services import tasks as task_service
 from ...services import usage as usage_service
 from ...services.errors import ConflictError, NotFound, ValidationError
 from ...timeutils import now_iso
-from ..deps import get_db, get_settings, verify_web_origin
+from ..deps import get_account, get_db, get_settings, verify_web_origin
 from ..models import OrderRequest, TaskCreate, TaskUpdate
 
 router = APIRouter(prefix="/api", tags=["tasks"])
@@ -32,6 +33,7 @@ def _counts(session: Session, settings) -> dict:
 @router.get("/mobile/bootstrap")
 def mobile_bootstrap(
     request: Request,
+    account: Account = Depends(get_account),
     session: Session = Depends(get_db),
     settings=Depends(get_settings),
 ):
@@ -56,6 +58,7 @@ def list_tasks(
     project_id: str | None = None,
     q: str | None = None,
     include_done: bool = False,
+    account: Account = Depends(get_account),
     session: Session = Depends(get_db),
     settings=Depends(get_settings),
 ):
@@ -80,7 +83,10 @@ def list_tasks(
 
 @router.post("/tasks", dependencies=[Depends(verify_web_origin)])
 def create_task(
-    body: TaskCreate, session: Session = Depends(get_db), settings=Depends(get_settings)
+    body: TaskCreate,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+    settings=Depends(get_settings),
 ):
     try:
         task = task_service.create_task(session, body.model_dump(), tz_name=settings.timezone)
@@ -90,7 +96,11 @@ def create_task(
 
 
 @router.get("/tasks/{task_id}")
-def get_task(task_id: str, session: Session = Depends(get_db)):
+def get_task(
+    task_id: str,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     try:
         return {"task": task_service.detail_payload(session, task_id)}
     except NotFound as exc:
@@ -101,6 +111,7 @@ def get_task(task_id: str, session: Session = Depends(get_db)):
 def update_task(
     task_id: str,
     body: TaskUpdate,
+    account: Account = Depends(get_account),
     session: Session = Depends(get_db),
     settings=Depends(get_settings),
 ):
@@ -133,7 +144,10 @@ def update_task(
 
 @router.post("/tasks/{task_id}/complete", dependencies=[Depends(verify_web_origin)])
 def complete_task(
-    task_id: str, version: int | None = Query(default=None), session: Session = Depends(get_db)
+    task_id: str,
+    version: int | None = Query(default=None),
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
 ):
     try:
         task = task_service.complete_task(session, task_id, expected_version=version)
@@ -145,7 +159,11 @@ def complete_task(
 
 
 @router.post("/tasks/{task_id}/reopen", dependencies=[Depends(verify_web_origin)])
-def reopen_task(task_id: str, session: Session = Depends(get_db)):
+def reopen_task(
+    task_id: str,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     try:
         task = task_service.reopen_task(session, task_id)
         return {"task": task_service.task_payload(session, task, detail=True)}
@@ -156,7 +174,11 @@ def reopen_task(task_id: str, session: Session = Depends(get_db)):
 
 
 @router.delete("/tasks/{task_id}", dependencies=[Depends(verify_web_origin)])
-def archive_task(task_id: str, session: Session = Depends(get_db)):
+def archive_task(
+    task_id: str,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     try:
         task_service.archive_task(session, task_id)
         return {"ok": True}
@@ -165,7 +187,12 @@ def archive_task(task_id: str, session: Session = Depends(get_db)):
 
 
 @router.post("/tasks/{task_id}/order", dependencies=[Depends(verify_web_origin)])
-def reorder_task(task_id: str, body: OrderRequest, session: Session = Depends(get_db)):
+def reorder_task(
+    task_id: str,
+    body: OrderRequest,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     try:
         task = task_service.reorder_task(session, task_id, body.sort_order)
         return {"task": task_service.task_payload(session, task)}
@@ -174,7 +201,12 @@ def reorder_task(task_id: str, body: OrderRequest, session: Session = Depends(ge
 
 
 @router.post("/tasks/{task_id}/tags", dependencies=[Depends(verify_web_origin)])
-def set_tags(task_id: str, tags: list[str], session: Session = Depends(get_db)):
+def set_tags(
+    task_id: str,
+    tags: list[str],
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     try:
         task_service.set_tags(session, task_id, tags)
         return {
@@ -188,7 +220,10 @@ def set_tags(task_id: str, tags: list[str], session: Session = Depends(get_db)):
 
 @router.get("/search")
 def search(
-    q: str = Query(min_length=1), session: Session = Depends(get_db), settings=Depends(get_settings)
+    q: str = Query(min_length=1),
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+    settings=Depends(get_settings),
 ):
     rows = task_service.list_tasks(
         session, view="all", q=q, include_done=True, tz_name=settings.timezone

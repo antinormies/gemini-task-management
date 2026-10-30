@@ -8,6 +8,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..models import Project, Tag, Task, TaskEvent, TaskTag
+from ..tenancy import account_id_for
 from ..timeutils import (
     human_short_key,
     iso,
@@ -49,7 +50,12 @@ PRIORITY_RANK = {"urgent": 0, "high": 1, "medium": 2, "low": 3, "none": 4}
 
 def get_task(session: Session, task_id: str, include_archived: bool = False) -> Task:
     task = session.get(Task, task_id)
-    if not task or (task.archived_at and not include_archived):
+    account_id = account_id_for(session)
+    if (
+        not task
+        or (account_id and task.account_id != account_id)
+        or (task.archived_at and not include_archived)
+    ):
         raise NotFound("Task not found")
     return task
 
@@ -63,6 +69,8 @@ def _tags_for(session: Session, task_id: str) -> list[dict]:
 
 def task_payload(session: Session, task: Task, *, detail: bool = False) -> dict:
     project = session.get(Project, task.project_id) if task.project_id else None
+    if project is not None and project.account_id != task.account_id:
+        project = None
     data: dict[str, Any] = {
         "id": task.id,
         "short_key": human_short_key(task.id),
@@ -147,7 +155,8 @@ def _validate_project(session: Session, project_id: str | None) -> None:
     if project_id is None:
         return
     project = session.get(Project, project_id)
-    if not project or project.archived_at:
+    account_id = account_id_for(session)
+    if not project or project.archived_at or (account_id and project.account_id != account_id):
         raise ValidationError("Project does not exist or is archived")
 
 
@@ -249,7 +258,13 @@ def create_task(
         if estimate < 0 or estimate > 1440:
             raise ValidationError("Estimate must be 0-1440 minutes")
     max_order = (
-        session.scalar(select(func.max(Task.sort_order)).where(Task.status == status)) or 0.0
+        session.scalar(
+            select(func.max(Task.sort_order)).where(
+                Task.status == status,
+                Task.account_id == account_id_for(session),
+            )
+        )
+        or 0.0
     )
     task = Task(
         title=title,

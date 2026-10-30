@@ -9,6 +9,8 @@ from app.ai.clients import AIResult
 from app.ai.schemas import Interpretation
 from app.config import Settings
 from app.main import create_app
+from app.models import Account
+from app.security import SESSION_COOKIE, make_session
 
 HEADERS = {"X-GTM-Request": "1", "Origin": "http://127.0.0.1:8765"}
 
@@ -25,6 +27,7 @@ def settings(tmp_path: Path) -> Settings:
         ai_base_url="http://127.0.0.1:8080/internal/ai/complete",
         ai_api_key="test-self-key",
         ai_model="deepseek-v4.1-flash",
+        google_client_id="test-google-client",
     )
 
 
@@ -32,6 +35,19 @@ def settings(tmp_path: Path) -> Settings:
 def app(settings: Settings):
     application = create_app(settings)
     with TestClient(application) as client:
+        with application.state.db.session() as session:
+            account = Account(
+                google_sub="test-google-sub",
+                email="test@example.com",
+                name="Test User",
+            )
+            session.add(account)
+            session.flush()
+            account_id = account.id
+        client.cookies.set(
+            SESSION_COOKIE,
+            make_session(account_id, settings.secret_key),
+        )
         yield application, client
 
 

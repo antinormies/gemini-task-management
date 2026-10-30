@@ -38,6 +38,30 @@ def safe_equals(a: str, b: str) -> bool:
     return hmac.compare_digest(a, b)
 
 
+SESSION_COOKIE = "gtm_session"
+
+
+def make_session(account_id: str, secret: str) -> str:
+    issued = str(int(__import__("time").time()))
+    payload = f"{account_id}.{issued}"
+    return f"{payload}.{hmac_hex(payload, secret)}"
+
+
+def read_session(value: str | None, secret: str, max_age_seconds: int) -> str | None:
+    if not value or not secret:
+        return None
+    try:
+        account_id, issued, signature = value.split(".", 2)
+        issued_at = int(issued)
+    except ValueError, TypeError:
+        return None
+    if issued_at < int(__import__("time").time()) - max_age_seconds:
+        return None
+    if not safe_equals(signature, hmac_hex(f"{account_id}.{issued}", secret)):
+        return None
+    return account_id
+
+
 def origin_allowed(origin: str | None, configured: str, host: str | None = None) -> bool:
     if not origin:
         return True

@@ -14,6 +14,7 @@ from ..ai.service import AIService
 from ..config import Settings
 from ..db import Database
 from ..models import AIProposal, AIRun, Task
+from ..tenancy import set_session_account
 from ..timeutils import now_iso, now_utc
 from . import projects as project_service
 from . import proposals as proposal_service
@@ -136,6 +137,7 @@ async def process_text_run(
         run = session.get(AIRun, run_id)
         if not run or run.status not in ("queued", "running"):
             return
+        set_session_account(session, run.account_id)
         run.status = "running"
         run.started_at = now_iso()
         context = json.loads(run.context_json or "{}")
@@ -166,6 +168,7 @@ async def process_text_run(
         with db.session() as session:
             run = session.get(AIRun, run_id)
             if run:
+                set_session_account(session, run.account_id)
                 run.status = "failed"
                 run.error_code = exc.code
                 run.error_message = exc.message
@@ -176,6 +179,7 @@ async def process_text_run(
         run = session.get(AIRun, run_id)
         if not run:
             return
+        set_session_account(session, run.account_id)
         run.status = "succeeded"
         run.model = result.model
         run.finished_at = now_iso()
@@ -210,6 +214,7 @@ async def interpret_voice(
     selected_task_id: str | None = None,
     project_id: str | None = None,
     device_id: str | None = None,
+    account_id: str,
 ) -> tuple[AIRun, AIProposal, Interpretation]:
     transcript = (transcript or "").strip()
     if not transcript:
@@ -219,6 +224,7 @@ async def interpret_voice(
     if duration_ms < 0 or duration_ms > settings.voice_max_seconds * 1000:
         raise ValidationError("Voice duration is out of range")
     with db.session() as session:
+        set_session_account(session, account_id)
         context = _context(session, view, selected_task_id, project_id)
         context["timezone"] = settings.timezone
         context["voice_input"] = "system_stt"
@@ -235,6 +241,7 @@ async def interpret_voice(
         )
         session.add(run)
         session.flush()
+        set_session_account(session, run.account_id)
         run_id = run.id
         if settings.ai_capability == "chat.standard":
             prompt = build_compact_prompt(
@@ -264,6 +271,7 @@ async def interpret_voice(
         with db.session() as session:
             run = session.get(AIRun, run_id)
             if run:
+                set_session_account(session, run.account_id)
                 run.status = "failed"
                 run.error_code = exc.code
                 run.error_message = exc.message
@@ -274,6 +282,7 @@ async def interpret_voice(
         run = session.get(AIRun, run_id)
         if not run:
             raise NotFound("Run disappeared")
+        set_session_account(session, run.account_id)
         run.status = "succeeded"
         run.model = result.model
         run.finished_at = now_iso()

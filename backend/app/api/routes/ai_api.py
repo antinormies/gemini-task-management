@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...ai.clients import AIError
-from ...models import AIProposal, AIRun, Device, Tag
+from ...models import Account, AIProposal, AIRun, Device, Tag
 from ...services import interpretation as interpretation_service
 from ...services import maintenance
 from ...services import projects as project_service
@@ -16,7 +16,7 @@ from ...services import tasks as task_service
 from ...services import usage as usage_service
 from ...services.errors import ActionError, NotFound, ValidationError
 from ...timeutils import now_iso
-from ..deps import get_db, get_optional_device, get_settings, verify_web_origin
+from ..deps import get_account, get_db, get_optional_device, get_settings, verify_web_origin
 from ..models import ImportRequest, TextInterpretRequest, VoiceRequest
 
 router = APIRouter(prefix="/api", tags=["ai"])
@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api", tags=["ai"])
 async def interpret_text(
     body: TextInterpretRequest,
     request: Request,
+    account: Account = Depends(get_account),
     session: Session = Depends(get_db),
     settings=Depends(get_settings),
 ):
@@ -52,16 +53,23 @@ async def interpret_text(
 
 
 @router.get("/ai/runs/{run_id}")
-def get_run(run_id: str, session: Session = Depends(get_db)):
+def get_run(
+    run_id: str,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     run = session.get(AIRun, run_id)
-    if not run:
+    if not run or run.account_id != account.id:
         raise HTTPException(status_code=404, detail="Run not found")
     return interpretation_service.run_payload(session, run)
 
 
 @router.post("/ai/proposals/{proposal_id}/apply", dependencies=[Depends(verify_web_origin)])
 def apply_proposal(
-    proposal_id: str, session: Session = Depends(get_db), settings=Depends(get_settings)
+    proposal_id: str,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+    settings=Depends(get_settings),
 ):
     try:
         proposal, affected = proposal_service.apply_proposal(session, proposal_id, settings)
@@ -78,9 +86,13 @@ def apply_proposal(
 
 
 @router.post("/ai/proposals/{proposal_id}/reject", dependencies=[Depends(verify_web_origin)])
-def reject_proposal(proposal_id: str, session: Session = Depends(get_db)):
+def reject_proposal(
+    proposal_id: str,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     proposal = session.get(AIProposal, proposal_id)
-    if not proposal:
+    if not proposal or proposal.account_id != account.id:
         raise HTTPException(status_code=404, detail="Proposal not found")
     if proposal.status != "pending":
         raise HTTPException(status_code=409, detail="Proposal is not pending")
@@ -91,7 +103,11 @@ def reject_proposal(proposal_id: str, session: Session = Depends(get_db)):
 
 
 @router.post("/ai/proposals/{proposal_id}/undo", dependencies=[Depends(verify_web_origin)])
-def undo_proposal(proposal_id: str, session: Session = Depends(get_db)):
+def undo_proposal(
+    proposal_id: str,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+):
     try:
         proposal, restored = proposal_service.undo_proposal(session, proposal_id)
         return {
@@ -108,6 +124,7 @@ def undo_proposal(proposal_id: str, session: Session = Depends(get_db)):
 async def interpret_voice(
     body: VoiceRequest,
     request: Request,
+    account: Account = Depends(get_account),
     device: Device | None = Depends(get_optional_device),
     settings=Depends(get_settings),
 ):
@@ -122,6 +139,7 @@ async def interpret_voice(
             selected_task_id=body.selected_task_id,
             project_id=body.project_id,
             device_id=device.id if device else None,
+            account_id=account.id,
         )
         with request.app.state.db.session() as session:
             return {
@@ -144,6 +162,7 @@ async def interpret_voice(
 def usage(
     request: Request,
     days: int = 7,
+    account: Account = Depends(get_account),
     session: Session = Depends(get_db),
     settings=Depends(get_settings),
 ):
@@ -151,17 +170,21 @@ def usage(
 
 
 @router.post("/maintenance/backup", dependencies=[Depends(verify_web_origin)])
-def backup(request: Request):
+def backup(request: Request, account: Account = Depends(get_account)):
     return maintenance.create_backup(request.app.state.db, request.app.state.settings)
 
 
 @router.post("/maintenance/rebuild-search", dependencies=[Depends(verify_web_origin)])
-def rebuild_search(request: Request):
+def rebuild_search(request: Request, account: Account = Depends(get_account)):
     return maintenance.rebuild_search(request.app.state.db)
 
 
 @router.get("/export")
-def export_data(session: Session = Depends(get_db), settings=Depends(get_settings)):
+def export_data(
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+    settings=Depends(get_settings),
+):
     projects = [
         project_service.project_payload(session, p)
         for p in project_service.list_projects(session, include_archived=True)
@@ -186,7 +209,10 @@ def export_data(session: Session = Depends(get_db), settings=Depends(get_setting
 
 @router.post("/import", dependencies=[Depends(verify_web_origin)])
 def import_data(
-    body: ImportRequest, session: Session = Depends(get_db), settings=Depends(get_settings)
+    body: ImportRequest,
+    account: Account = Depends(get_account),
+    session: Session = Depends(get_db),
+    settings=Depends(get_settings),
 ):
     data = body.data
     created = 0

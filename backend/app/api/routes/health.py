@@ -34,8 +34,4 @@ def health(
             "input": "system_stt",
             "max_seconds": settings.voice_max_seconds,
         },
-        "pairing": {
-            "enabled": bool(settings.secret_key),
-            "ttl_seconds": settings.pairing_ttl_seconds,
-        },
     }

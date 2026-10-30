@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Sign in · Antara Task AI</title>
+  <link rel="stylesheet" href="/static/css/app.css?v=20261030a">
+</head>
+<body class="auth-body">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="auth-brand">
+        <span class="brand-mark"><svg class="icon brand-logo" viewBox="0 0 108 108"><path fill="currentColor" fill-rule="evenodd" d="M39 30 H66 A11 11 0 0 1 77 41 V53 A11 11 0 0 1 66 64 H53 L40 76 V64 H39 A11 11 0 0 1 28 53 V41 A11 11 0 0 1 39 30 Z M52 37 C53 44.5 56.5 48 64 49 C56.5 50 53 53.5 52 61 C51 53.5 47.5 50 40 49 C47.5 48 51 44.5 52 37 Z"/></svg></span>
+        <span class="brand-name">Antara Task AI</span>
+      </div>
+
+      <div class="auth-orb" aria-hidden="true"><span></span></div>
+      <p class="eyebrow">Your quiet command center</p>
+      <h1>Sign in to your tasks</h1>
+      <p class="auth-copy">Use the same Google account on web and Android. Your projects, tasks, and AI history stay scoped to you.</p>
+
+      {% if google_client_id %}
+      <div class="auth-google">
+        <div id="g_id_onload"
+             data-client_id="{{ google_client_id }}"
+             data-callback="handleGoogleCredential"
+             data-auto_prompt="false"></div>
+        <div class="g_id_signin"
+             data-type="standard"
+             data-theme="outline"
+             data-size="large"
+             data-text="continue_with"
+             data-shape="pill"
+             data-logo_alignment="left"
+             data-width="320"></div>
+      </div>
+      <p class="auth-error" id="auth-error" role="alert" hidden></p>
+      {% else %}
+      <div class="auth-config">
+        <strong>Google sign-in is not configured.</strong>
+        <p>Set <code>GTM_GOOGLE_CLIENT_ID</code> on the server to the OAuth Web client ID, then reload this page.</p>
+      </div>
+      {% endif %}
+
+      <p class="auth-fineprint">Google verifies your identity. Antara Task AI never sees your password.</p>
+    </section>
+  </main>
+
+  {% if google_client_id %}
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    async function handleGoogleCredential(response) {
+      const error = document.getElementById("auth-error");
+      if (!response || !response.credential) return;
+      error.hidden = true;
+      try {
+        const res = await fetch("/api/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-GTM-Request": "1" },
+          body: JSON.stringify({ credential: response.credential })
+        });
+        if (res.ok) {
+          window.location.replace("/");
+          return;
+        }
+        const data = await res.json().catch(function () { return {}; });
+        const detail = data.detail;
+        error.textContent = typeof detail === "string" ? detail : "Google sign-in failed. Please try again.";
+      } catch (e) {
+        error.textContent = "Could not reach the server. Please try again.";
+      }
+      error.hidden = false;
+    }
+  </script>
+  {% endif %}
+</body>
+</html>

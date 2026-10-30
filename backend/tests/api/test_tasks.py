@@ -16,7 +16,7 @@ def test_create_update_complete(client):
     task = r.json()["task"]
     assert task["status"] == "backlog"
     assert task["short_key"].startswith("GTM-")
-    r = client.get("/api/tasks?view=today")
+    r = client.get("/api/tasks?view=all")
     assert r.status_code == 200
     assert any(t["id"] == task["id"] for t in r.json()["items"])
     r = client.patch(

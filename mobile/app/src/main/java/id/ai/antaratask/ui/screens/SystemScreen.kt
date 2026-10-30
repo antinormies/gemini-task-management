@@ -51,6 +51,19 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
         }
         Spacer(Modifier.height(14.dp))
 
+        SettingsCard(title = "Account", meta = "Google") {
+            Text(
+                "Signed in with Google. Projects, tasks, and AI history are scoped to this account.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = { viewModel.logout() }, modifier = Modifier.fillMaxWidth()) {
+                Text("Sign out")
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
         SettingsCard(title = "AI usage", meta = "Last 7 days") {
             if (usage == null) {
                 Text("Loading usage…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)

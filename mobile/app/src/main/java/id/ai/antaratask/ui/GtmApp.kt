@@ -66,6 +66,7 @@ import id.ai.antaratask.MainViewModel
 import id.ai.antaratask.Tab
 import id.ai.antaratask.UiState
 import id.ai.antaratask.VoiceState
+import id.ai.antaratask.ui.screens.LoginScreen
 import id.ai.antaratask.ui.screens.ProposalSheet
 import id.ai.antaratask.ui.screens.QuickAddDialog
 import id.ai.antaratask.ui.screens.SpeakScreen
@@ -164,8 +165,8 @@ fun GtmApp(viewModel: MainViewModel) {
 
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     if (!state.paired) {
-        SystemBars(darkIcons = !isDarkTheme)
-        ConnectingScreen(state, viewModel::retryConnection)
+        SystemBars(darkIcons = true)
+        LoginScreen(state, onToken = viewModel::loginWithGoogle)
         return
     }
 
@@ -241,49 +242,6 @@ fun GtmApp(viewModel: MainViewModel) {
                 showQuickAdd = false
             }
         )
-    }
-}
-
-@Composable
-private fun ConnectingScreen(state: UiState, onRetry: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                "ANTARA TASK AI",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(20.dp))
-            if (state.error == null) {
-                CircularProgressIndicator()
-                Spacer(Modifier.height(14.dp))
-                Text(
-                    "Connecting to your local server…",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            } else {
-                Text(
-                    "Can't reach the local server",
-                    style = MaterialTheme.typography.headlineSmall,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    state.error ?: "Check that the server is running and adb reverse is set.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(18.dp))
-                Button(onClick = onRetry) { Text("Retry") }
-            }
-        }
     }
 }
 

@@ -6,54 +6,60 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import Settings
-from ..models import Device, PairingCode
-from ..security import (
-    hmac_hex,
-    new_pairing_code,
-    new_token,
-    token_prefix,
-)
+from ..models import Account, Device
+from ..security import hmac_hex, new_token, token_prefix
+from ..tenancy import account_id_for, set_session_account
 from ..timeutils import iso, now_iso, now_utc
 from .errors import NotFound, ValidationError
 
 
-def create_pairing_code(session: Session, settings: Settings) -> tuple[str, str]:
-    if not settings.secret_key:
-        raise ValidationError("GTM_SECRET_KEY is empty; pairing is disabled")
-    session.query(PairingCode).delete()
-    code = new_pairing_code()
-    expires = iso(now_utc() + timedelta(seconds=settings.pairing_ttl_seconds))
-    session.add(
-        PairingCode(
-            code_hash=hmac_hex(code, settings.secret_key),
-            expires_at=expires,
+def account_payload(account: Account) -> dict:
+    return {
+        "id": account.id,
+        "email": account.email,
+        "name": account.name,
+        "picture": account.picture,
+    }
+
+
+def login_with_google(session: Session, settings: Settings, info: dict) -> Account:
+    sub = str(info.get("sub") or "").strip()
+    email = str(info.get("email") or "").strip()[:320]
+    name = str(info.get("name") or "").strip()[:200]
+    picture = str(info.get("picture") or "").strip()[:2000]
+    if not sub:
+        raise ValidationError("Google account subject is missing")
+    account = session.scalar(select(Account).where(Account.google_sub == sub))
+    if account is None:
+        legacy = session.scalar(
+            select(Account).where(Account.is_legacy == 1).order_by(Account.created_at).limit(1)
         )
-    )
+        if legacy is not None and not legacy.google_sub:
+            account = legacy
+            account.is_legacy = 0
+        else:
+            account = Account(google_sub=sub, email=email, name=name, picture=picture)
+            session.add(account)
+            session.flush()
+    account.google_sub = sub
+    account.email = email
+    account.name = name or email
+    account.picture = picture
+    account.last_login_at = now_iso()
+    account.updated_at = now_iso()
+    set_session_account(session, account.id)
     session.flush()
-    return code, expires
+    return account
 
 
-def pair_device(
-    session: Session, settings: Settings, code: str, device_name: str
+def create_device(
+    session: Session, settings: Settings, account: Account, device_name: str
 ) -> tuple[str, Device]:
     if not settings.secret_key:
-        raise ValidationError("Pairing is not configured")
-    code_hash = hmac_hex(code.strip(), settings.secret_key)
-    row = session.get(PairingCode, code_hash)
-    if not row or row.used_at:
-        raise ValidationError("Pairing code is invalid or already used")
-    if row.expires_at < now_iso():
-        raise ValidationError("Pairing code has expired")
-    if row.attempt_count >= settings.pairing_max_attempts:
-        raise ValidationError("Too many pairing attempts; generate a new code")
-    token, device = _create_device(session, settings, device_name)
-    row.used_at = now_iso()
-    return token, device
-
-
-def _create_device(session: Session, settings: Settings, device_name: str) -> tuple[str, Device]:
+        raise ValidationError("GTM_SECRET_KEY is empty; device login is disabled")
     token = new_token()
     device = Device(
+        account_id=account.id,
         name=(device_name.strip() or "Android phone")[:120],
         token_hash=hmac_hex(token, settings.secret_key),
         token_prefix=token_prefix(token),
@@ -61,12 +67,6 @@ def _create_device(session: Session, settings: Settings, device_name: str) -> tu
     session.add(device)
     session.flush()
     return token, device
-
-
-def auto_pair_device(session: Session, settings: Settings, device_name: str) -> tuple[str, Device]:
-    if not settings.secret_key:
-        raise ValidationError("GTM_SECRET_KEY is empty; automatic provisioning is disabled")
-    return _create_device(session, settings, device_name)
 
 
 def authenticate(session: Session, settings: Settings, token: str) -> Device:
@@ -82,6 +82,7 @@ def authenticate(session: Session, settings: Settings, token: str) -> Device:
     last = device.last_seen_at
     if not last or last < iso(now_utc() - timedelta(seconds=60)):
         device.last_seen_at = now_iso()
+    set_session_account(session, device.account_id)
     return device
 
 
@@ -91,7 +92,7 @@ def list_devices(session: Session) -> list[Device]:
 
 def revoke_device(session: Session, device_id: str) -> Device:
     device = session.get(Device, device_id)
-    if not device:
+    if not device or device.account_id != account_id_for(session):
         raise NotFound("Device not found")
     device.revoked_at = now_iso()
     session.flush()

@@ -31,6 +31,10 @@
       opts.body = JSON.stringify(opts.body);
     }
     return fetch(path, Object.assign({}, opts, { headers: headers })).then(function (res) {
+      if (res.status === 401) {
+        window.location.assign("/login");
+        throw new Error("Sign in required");
+      }
       return res.text().then(function (text) {
         var data = null;
         try { data = text ? JSON.parse(text) : null; } catch (e) { data = { detail: text }; }
@@ -522,7 +526,7 @@
         ["Model", ai.model || "not configured"],
         ["Endpoint", ai.configured ? "connected" : "not configured"],
         ["Voice", health.voice.enabled ? health.voice.provider + " · " + health.voice.input : "disabled"],
-        ["Pairing", health.pairing.enabled ? "enabled" : "disabled"]
+        ["Account", "Google sign-in"]
       ];
       $("#health-details").innerHTML = lines.map(function (row) {
         return '<div class="kv"><span>' + esc(row[0]) + "</span><strong>" + esc(row[1]) + "</strong></div>";
@@ -535,7 +539,7 @@
     var items = data.items || [];
     $("#device-list").innerHTML = items.length ? items.map(function (d) {
       return '<div class="device-row"><div><strong>' + esc(d.name) + "</strong><br><span>" + esc((d.last_seen_at || d.created_at || "").slice(0, 16).replace("T", " ")) + "</span></div>" + (d.revoked_at ? '<span style="color:var(--danger)">revoked</span>' : '<button class="btn btn-small btn-quiet" data-revoke="' + esc(d.id) + '">Revoke</button>') + "</div>";
-    }).join("") : '<div class="muted">No paired devices.</div>';
+    }).join("") : '<div class="muted">No signed-in devices.</div>';
     $$("[data-revoke]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         api("/api/auth/devices/" + btn.getAttribute("data-revoke") + "/revoke", { method: "POST" }).then(function () {

@@ -85,7 +85,21 @@
         <a class="nav-item {% if view == 'settings' %}is-active{% endif %}" href="/settings">
           <svg class="icon nav-icon"><use href="#i-settings"></use></svg><span>Settings &amp; system</span>
         </a>
-        <div class="sidebar-note">Local-first · private tailnet</div>
+        <div class="account-chip">
+          {% if account.picture %}
+          <img class="account-avatar" src="{{ account.picture }}" alt="">
+          {% else %}
+          <span class="account-avatar">{{ (account.name or account.email or '?')[0]|upper }}</span>
+          {% endif %}
+          <div class="account-meta">
+            <strong>{{ account.name or account.email }}</strong>
+            <small>{{ account.email }}</small>
+          </div>
+          <form method="post" action="/logout">
+            <button class="account-signout" type="submit" title="Sign out" aria-label="Sign out">↗</button>
+          </form>
+        </div>
+        <div class="sidebar-note">Account-scoped · Google secured</div>
       </div>
     </aside>
 

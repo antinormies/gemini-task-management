@@ -7,8 +7,8 @@ android {
     namespace = "id.ai.antaratask"
     compileSdk = 36
 
-    val autoPairKey = (project.findProperty("GTM_AUTO_PAIR_KEY") as String?) ?: ""
-    val escapedAutoPairKey = autoPairKey.replace("\\", "\\\\").replace("\"", "\\\"")
+    val googleClientId = (project.findProperty("GTM_GOOGLE_CLIENT_ID") as String?) ?: ""
+    val escapedGoogleClientId = googleClientId.replace("\\", "\\\\").replace("\"", "\\\"")
 
     defaultConfig {
         applicationId = "id.ai.antaratask"
@@ -18,7 +18,7 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GTM_BASE_URL", "\"https://antaratask.dream-team.works\"")
-        buildConfigField("String", "GTM_AUTO_PAIR_KEY", "\"$escapedAutoPairKey\"")
+        buildConfigField("String", "GTM_GOOGLE_CLIENT_ID", "\"$escapedGoogleClientId\"")
     }
 
     buildTypes {
@@ -61,6 +61,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
 }

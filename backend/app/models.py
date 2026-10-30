@@ -1,27 +1,65 @@
 from __future__ import annotations
 
-from sqlalchemy import REAL, ForeignKey, Index, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    REAL,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    bindparam,
+    event,
+)
+from sqlalchemy.orm import Mapped, Session, declared_attr, mapped_column, with_loader_criteria
 
 from .db import Base
 from .security import new_id
+from .tenancy import account_id_for
 from .timeutils import now_iso
 
 
-class Project(Base):
+class Account(Base):
+    __tablename__ = "accounts"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    email: Mapped[str] = mapped_column(String(320), default="")
+    name: Mapped[str] = mapped_column(String(200), default="")
+    picture: Mapped[str] = mapped_column(Text, default="")
+    is_legacy: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[str] = mapped_column(String(40), default=now_iso)
+    updated_at: Mapped[str] = mapped_column(String(40), default=now_iso)
+    last_login_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+
+class AccountScoped:
+    @declared_attr
+    def account_id(cls) -> Mapped[str]:
+        return mapped_column(
+            String(36),
+            ForeignKey("accounts.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+
+
+class Project(AccountScoped, Base):
     __tablename__ = "projects"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
     color: Mapped[str] = mapped_column(String(20), default="#64748b")
     description: Mapped[str] = mapped_column(Text, default="")
     archived_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[str] = mapped_column(String(40), default=now_iso)
     updated_at: Mapped[str] = mapped_column(String(40), default=now_iso)
 
-    __table_args__ = (Index("ix_projects_archived", "archived_at"),)
+    __table_args__ = (
+        UniqueConstraint("account_id", "name", name="uq_projects_account_name"),
+        Index("ix_projects_archived", "archived_at"),
+    )
 
 
-class Task(Base):
+class Task(AccountScoped, Base):
     __tablename__ = "tasks"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     title: Mapped[str] = mapped_column(String(300), nullable=False)
@@ -60,12 +98,14 @@ class Task(Base):
     )
 
 
-class Tag(Base):
+class Tag(AccountScoped, Base):
     __tablename__ = "tags"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
     color: Mapped[str] = mapped_column(String(20), default="#64748b")
     created_at: Mapped[str] = mapped_column(String(40), default=now_iso)
+
+    __table_args__ = (UniqueConstraint("account_id", "name", name="uq_tags_account_name"),)
 
 
 class TaskTag(Base):
@@ -91,7 +131,7 @@ class TaskEvent(Base):
     __table_args__ = (Index("ix_task_events_task_created", "task_id", "created_at"),)
 
 
-class Device(Base):
+class Device(AccountScoped, Base):
     __tablename__ = "devices"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -115,7 +155,7 @@ class PairingCode(Base):
     __table_args__ = (Index("ix_pairing_expiry", "expires_at"),)
 
 
-class AIRun(Base):
+class AIRun(AccountScoped, Base):
     __tablename__ = "ai_runs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     request_id: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
@@ -150,7 +190,7 @@ class AIRun(Base):
     )
 
 
-class AIProposal(Base):
+class AIProposal(AccountScoped, Base):
     __tablename__ = "ai_proposals"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     ai_run_id: Mapped[str] = mapped_column(
@@ -176,3 +216,44 @@ class Setting(Base):
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
     value: Mapped[str] = mapped_column(Text, default="")
     updated_at: Mapped[str] = mapped_column(String(40), default=now_iso)
+
+
+ACCOUNT_SCOPED_MODELS = (Project, Task, Tag, Device, AIRun, AIProposal)
+_ACCOUNT_BIND = bindparam("gtm_account_id")
+
+
+@event.listens_for(Session, "do_orm_execute")
+def _apply_account_scope(execute_state) -> None:
+    if not execute_state.is_select or execute_state.is_column_load:
+        return
+    account_id = account_id_for(execute_state.session)
+    if not account_id:
+        return
+    for model in ACCOUNT_SCOPED_MODELS:
+        execute_state.statement = execute_state.statement.options(
+            with_loader_criteria(
+                model,
+                lambda cls: cls.account_id == _ACCOUNT_BIND,
+                include_aliases=True,
+                track_closure_variables=False,
+            )
+        )
+    parameters = dict(execute_state.parameters or {})
+    parameters["gtm_account_id"] = account_id
+    execute_state.parameters = parameters
+
+
+@event.listens_for(Session, "before_flush")
+def _enforce_account_scope(session: Session, _flush_context, _instances) -> None:
+    account_id = account_id_for(session)
+    for obj in session.new:
+        if isinstance(obj, AccountScoped):
+            if not obj.account_id:
+                if not account_id:
+                    raise RuntimeError("Account context is required for writes")
+                obj.account_id = account_id
+            elif account_id and obj.account_id != account_id:
+                raise RuntimeError("Cross-account write rejected")
+    for obj in session.dirty:
+        if isinstance(obj, AccountScoped) and account_id and obj.account_id != account_id:
+            raise RuntimeError("Cross-account write rejected")

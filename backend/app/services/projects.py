@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import Project, Task
+from ..tenancy import account_id_for
 from ..timeutils import now_iso
 from .errors import NotFound, ValidationError
 
@@ -13,6 +14,7 @@ def project_payload(session: Session, project: Project) -> dict:
         session.scalar(
             select(func.count(Task.id)).where(
                 Task.project_id == project.id,
+                Task.account_id == project.account_id,
                 Task.archived_at.is_(None),
                 Task.status.notin_(("done", "cancelled")),
             )
@@ -22,7 +24,9 @@ def project_payload(session: Session, project: Project) -> dict:
     total = (
         session.scalar(
             select(func.count(Task.id)).where(
-                Task.project_id == project.id, Task.archived_at.is_(None)
+                Task.project_id == project.id,
+                Task.account_id == project.account_id,
+                Task.archived_at.is_(None),
             )
         )
         or 0
@@ -49,7 +53,8 @@ def list_projects(session: Session, *, include_archived: bool = False) -> list[P
 
 def get_project(session: Session, project_id: str) -> Project:
     project = session.get(Project, project_id)
-    if not project:
+    account_id = account_id_for(session)
+    if not project or (account_id and project.account_id != account_id):
         raise NotFound("Project not found")
     return project
 

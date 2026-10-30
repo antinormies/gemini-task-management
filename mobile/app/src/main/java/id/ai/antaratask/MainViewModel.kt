@@ -2,6 +2,7 @@ package id.ai.antaratask
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import id.ai.antaratask.data.ApiException
 import id.ai.antaratask.data.Device
 import id.ai.antaratask.data.GtmRepository
 import id.ai.antaratask.data.Health
@@ -47,7 +48,7 @@ class MainViewModel(
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     init {
-        if (repository.hasToken) refresh() else autoPair()
+        if (repository.hasToken) refresh()
     }
 
     fun setTab(tab: Tab) {
@@ -56,24 +57,32 @@ class MainViewModel(
     }
 
     fun retryConnection() {
-        if (repository.hasToken) refresh() else autoPair()
+        if (repository.hasToken) refresh()
     }
 
-    private fun autoPair() {
+    fun loginWithGoogle(idToken: String) {
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
-            runCatching { repository.autoPair() }
+            runCatching { repository.loginWithGoogle(idToken) }
                 .onSuccess { ok ->
                     if (ok) {
                         _state.update { it.copy(paired = true, loading = false, error = null) }
                         refresh()
                     } else {
                         _state.update {
-                            it.copy(loading = false, error = "Could not provision a device token.")
+                            it.copy(loading = false, error = "Google sign-in did not return a session.")
                         }
                     }
                 }
                 .onFailure { fail(it) }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            runCatching { repository.logout() }
+            repository.setToken(null)
+            _state.value = UiState(paired = false)
         }
     }
 
@@ -350,6 +359,18 @@ class MainViewModel(
     private fun toast(message: String) = _state.update { it.copy(toast = message) }
 
     private fun fail(error: Throwable) {
+        if (error is ApiException && error.status == 401) {
+            repository.setToken(null)
+            _state.update {
+                it.copy(
+                    paired = false,
+                    loading = false,
+                    busy = false,
+                    error = "Your session expired. Sign in again."
+                )
+            }
+            return
+        }
         _state.update { it.copy(loading = false, busy = false, error = error.message ?: "Something went wrong") }
     }
 

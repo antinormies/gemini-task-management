@@ -45,13 +45,13 @@ class ProjectUpdate(BaseModel):
     archived: bool | None = None
 
 
-class PairRequest(BaseModel):
-    code: str
-    device_name: str = "Android phone"
+class GoogleLoginRequest(BaseModel):
+    id_token: str | None = None
+    credential: str | None = None
+    device_name: str | None = None
 
-
-class AutoPairRequest(BaseModel):
-    device_name: str = "Android phone"
+    def token(self) -> str:
+        return (self.id_token or self.credential or "").strip()
 
 
 class TextInterpretRequest(BaseModel):
