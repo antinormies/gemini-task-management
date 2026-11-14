@@ -1,6 +1,9 @@
 # Android Client — Build Plan
 
-**Status:** v0.1 implemented on `feat/rock`; this document remains the design/spec record. Typography is Plus Jakarta Sans, the app follows the phone's light/dark setting, and the board supports long-press drag between phases.
+**Status:** v0.1 implemented on `feat/rock`. **Visual authority has moved:** the mobile
+design system is now [design.md](../design.md) (Numo-derived tokens, components, screen
+specs) with working notes in `.agents/design/`. This file remains the behavioural,
+networking and domain record. Typography is Plus Jakarta Sans, the app follows the phone's light/dark setting, and the board supports long-press drag between phases.
 **Related:** [PLAN.md](PLAN.md) · [AI_INTEGRATION.md](AI_INTEGRATION.md) · [DATA_MODEL.md](DATA_MODEL.md)
 **Design reference:** [reference.html](reference.html) ("Echo — voice task manager")
 **Package:** `dev.antinormies.gtm` (implemented)

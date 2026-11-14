@@ -82,3 +82,61 @@ screenshot count (33 screens for Numo). That is why it carries the smallest weig
 Colour contrast, spacing arithmetic, touch-target sizes and type tracking are computed
 or specified outright. A model opinion adds nothing to arithmetic — those are enforced
 by `check_contrast.py` and the token file.
+
+---
+
+## Feature audit (v1 scope)
+
+`python3 .agents/design/tools/jev_judge.py audit` — include / defer / reject per feature,
+with the same 0.40 confidence floor.
+
+| Feature | Jev | Confidence | Applied |
+|---|---|---|---|
+| Voice capture from any tab | include | 0.70 | include |
+| Pull-to-refresh | include | 0.96 | include |
+| Haptics on capture/apply | include | 0.72 | include |
+| Header search | include | 0.55 | include |
+| Project colour dot | include | 0.37 | **fallback** → include |
+| Offline banner | include | 0.86 | include |
+| Keyboard-aware composer | include | 0.70 | include |
+| Skeleton loaders | include | 0.68 | include |
+| Per-filter empty states | include | 0.50 | include |
+| Swipe-to-complete | include | 0.28 | **fallback** → defer |
+| Manual theme toggle | defer | 0.55 | defer |
+| Completion celebration | defer | 0.70 | defer |
+| Reduced-motion preference | defer | 0.35 | **fallback** → defer |
+| Board status change | defer | 0.48 | **overridden** → include |
+| 409 conflict notice | defer | 0.50 | **overridden** → include |
+
+### Override policy
+
+Two answers were overridden by an engineering constraint, and the constraint is recorded
+rather than the preference: **a rebuild may change how an existing capability looks, but
+must not remove it.** Board status changes and the 409 conflict notice already ship in
+v0.1, so both are kept (status changes move to a long-press sheet; conflicts surface
+through the shell toast plus retry).
+
+This is the one place where a model judgment is deliberately outranked. Everything else in
+this ledger is applied as answered, with fallbacks where confidence is below the floor.
+
+## Design tournament (pairwise, Copeland)
+
+Single-pick `Choice` questions were badly discriminated for design alternatives (several
+answered at 0.19–0.49 confidence), which means all options were viable. Those questions
+were re-asked as pairwise `Noul` comparisons and aggregated deterministically:
+
+```bash
+python3 .agents/design/tools/jev_judge.py tournament   # writes jev/tournament.json
+```
+
+| Question | Winner | Copeland | Notes |
+|---|---|---|---|
+| X1 Tasks header | `compact_band` | 2.0 | beat both the full band and the white header |
+| X2 Board column width | `col_232` | 2.0 | 232dp keeps a neighbour visible |
+| X3 Voice result | `below_orb` | 1.5 | tied with a sheet; declaration order breaks the tie |
+| X4 Composer | `full_canvas` | 2.0 | reverses the single pick (`bottom_sheet`) |
+| X5 System stats | `list_rows` | 2.0 | reverses the single pick (`grid_2x2`) |
+| X6 Login | `split` | 1.5 | brand block + white credential panel |
+
+16 pairwise comparisons, 6 decided winners, 2 reversals of the earlier answers — evidence
+that the tournament was worth running rather than trusting a single low-confidence pick.

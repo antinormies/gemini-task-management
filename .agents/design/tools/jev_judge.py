@@ -26,7 +26,7 @@ import urllib.request
 
 ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 MODEL = "jev-latest"
-ROOT = pathlib.Path(__file__).resolve().parents[2]  # -> .agents/design
+ROOT = pathlib.Path(__file__).resolve().parents[1]  # -> .agents/design
 OUT = ROOT / "jev"
 # Any answer below this confidence is not applied; the code-side default wins.
 CONFIDENCE_FLOOR = 0.40

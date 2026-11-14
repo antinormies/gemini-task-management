@@ -297,6 +297,7 @@ a polite live region.
 - `Heatmap`: 6 columns × N rows of 40dp rounded squares (radius 12). Empty `line`,
   low `successSoft`, mid `success` at 55%, top `success`.
 - `UsageBars`: 7 bars, 10dp wide, radius 6, `brand` at 85%, `meta` day label beneath.
+  Implemented but unused until the API exposes a daily series (see §6.7).
 - `StorageBar`: 12dp track radius 6 `line`, segments `brand` / `success` / `warning`.
 - `SettingsRow`: 44dp min, 40dp tinted circular icon (16% tint of its hue), `titleM`
   label, `meta` value right-aligned, chevron when actionable.
@@ -336,9 +337,11 @@ is missing, show `NumoAlertDialog` *before* requesting it, with the privacy sent
 
 ### 6.3 Tasks — list (default, Jev D3 = `list_first`)
 `AppHeader` in **compact band** mode (Jev tournament X1): `displayM` title so the band
-stays short and the list keeps the screen. Band = streak pill, title with chevron
-(scope: Today / All / project), gift + avatar, filter chips and the Board/List
-segmented control on the same band. Body on `canvas`:
+stays short and the list keeps the screen. Band = streak pill (hidden when zero), title
+with a chevron that cycles the scope (All → Today → Overdue), a search icon, and
+`AvatarBadge` when the account has a name. Filter chips and the List/Board
+`SegmentedToggle` share a `FlowRow`, so at 200% font scale the toggle wraps to a second
+line instead of colliding with the chips. Body on `canvas`:
 - 18dp gutter, rows from §5.3, 10dp gaps.
 - Grouped variant inserts a `SectionTitle` (label `muted`, 24dp above, 12dp below) per
   project, with the group's active count.
@@ -354,8 +357,10 @@ fill) sits under the chips. Columns: 76% screen width cards? No — **columns ar
 wide**, 12dp gaps, horizontally scrollable, canvas background.
 - Column header: 36dp tinted chip (`brandSoft` for To do, `warningSoft` for In progress
   done? mapping below) + count pill + `+` icon.
-- Cards: `surface` radius 20, 14dp padding, 1.5dp `lineStrong`; title `titleM`,
-  meta row, priority dot. Drag between columns via long-press (existing behaviour).
+- Cards: white rows (radius 20, 1.5dp `lineStrong`) with title, meta and priority dot.
+  Long-press opens a status "Move to" sheet listing the four statuses; empty columns show
+  a warm "No tasks" block. Free drag was replaced by this sheet: same capability, no
+  fragile pointer maths, and it works at any font scale.
 - Status tints (Jev D6 = `white_cards_tinted_head`): To do `brandSoft`/`brandStrong`;
   In progress `warningSoft`/`warning`; Waiting `magentaSoft`/`magenta`; Done
   `successSoft`/`successStrong`.
@@ -378,15 +383,21 @@ again" and keeps the sheet open.
 ### 6.6 Quick add (composer, Jev tournament X4 = `full_canvas`)
 Full-screen `brand` canvas (§5.9) with the card stack: title card (scope pill "Public ⌄"
 + big title input) → subtasks row → effort chips → Task/Routines tiles → scope rows
-(Today / Tomorrow / Select date / Someday) → tags card → private note card. Submit FAB
-56dp; a disabled state at 40% until the title is non-empty. Keyboard-aware: cards scroll,
-FAB stays 16dp above the IME.
+(Today 18:00 / Tomorrow 09:00 / Next week / No date) → priority card. Scope and priority
+chips sit in `FlowRow`s. The submit action is a full-width **inverted** button (white fill,
+brand label) because the canvas is brand; disabled it becomes an outline. A floating FAB
+was removed after it overlapped the button on real screens. Keyboard-aware via
+`imePadding()`.
 
 ### 6.7 System
 White canvas, `displayL` "System". A single inline figure strip (Jev tournament X5 =
 `list_rows`): total tasks · done this week · AI requests · voice captures, rendered as
 `StatFigure`s in one row, then settings-style rows for everything else. Then:
-- `surfaceWarm` card: "AI usage · 7 days", `UsageBars`, total cost `meta`.
+- `surfaceWarm` card: "AI usage · 30 days" with tokens as the hero figure, estimated
+  cost and voice captures as rows. The 7-day bar chart is **not** rendered: `Usage` from
+  the API carries only aggregates (runs, voiceRuns, tokens, cost, storage), no daily
+  series. The `UsageBars`/`Heatmap` components exist and are ready for it once the
+  endpoint exposes a per-day breakdown.
 - Storage card: `StorageBar` + legend (DB / backups / logs / workspace).
 - Engine card: `SettingsRow`s (model, speech recognizer, schema, FTS index, last run).
 - Device card: paired device, last seen, "Unpair this phone" in `dangerStrong`.
@@ -442,7 +453,7 @@ ui/components/Common.kt    AppHeader, FilterChips, TaskRow, NumoCheckbox, FabClu
                            NumoBottomBar, StackCard, ButtonX, SectionTitle, StatTile,
                            SettingsRow, ToastPill, NumoAlertDialog, EmptyState
 ui/components/VoiceOrb.kt  StateOrb (+ rings, dots, reduced-motion handling)
-ui/components/DataViz.kt   Heatmap, UsageBars, StorageBar
+ui/components/DataViz.kt   Heatmap, UsageBars, StorageBar, StatFigure
 ui/screens/LoginScreen.kt  §6.1
 ui/screens/SpeakScreen.kt  §6.2 / §5.7
 ui/screens/TasksScreen.kt  §6.3 + §6.4
@@ -450,8 +461,11 @@ ui/screens/TaskDetailSheet.kt §6.5
 ui/screens/QuickAddDialog.kt  §6.6
 ui/screens/SystemScreen.kt    §6.7
 ui/screens/ProposalSheet.kt   §6.8
-ui/GtmApp.kt               shell, insets, tab wiring, permission flow
+ui/GtmApp.kt               shell, insets, tab wiring, permission flow, toast pill
 ```
+
+Verified screenshots from the physical device and the emulator live in
+`.agents/design/verification/` (see `verification.md` there for the run log).
 
 Rules: screens never hardcode colours or dp magic numbers that exist in the token set;
 screens read `NumoTheme.colors`, `NumoTheme.type`, `NumoTheme.space`. New shared UI goes
@@ -481,3 +495,86 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 A UI change is done only with: a green build, the contrast gate passing, and a
 screenshot of the affected screen from the emulator at both light and dark. Do not
 claim a visual result without the screenshot path.
+
+---
+
+## 12. Decisions of record, deviations and evidence
+
+### 12.1 Feature scope (Jev audit, `jev_judge.py audit`)
+
+| Feature | Verdict | Confidence | In v1 |
+|---|---|---|---|
+| Voice capture from any tab via the mic FAB | include | 0.70 | yes |
+| Pull-to-refresh on Tasks | include | 0.96 | yes |
+| Haptics on capture/apply/destructive | include | 0.72 | yes (see note) |
+| Search from the Tasks header | include | 0.55 | yes |
+| Project colour dot in the meta line | include (fallback) | 0.37 | yes |
+| Offline banner with retry | include | 0.86 | yes |
+| Keyboard-aware composer | include | 0.70 | yes |
+| Warm skeleton loaders | include | 0.68 | yes |
+| Per-filter empty states | include | 0.50 | yes |
+| Swipe-to-complete | defer (fallback) | 0.28 | no |
+| Manual light/dark toggle | defer | 0.55 | no — follows the system |
+| Completion celebration card | defer | 0.70 | no — no gamification in v1 |
+| In-app reduced-motion preference | defer (fallback) | 0.35 | no — respects the OS setting |
+| **Board status change** | *override* | — | yes, as a long-press "Move to" sheet |
+| **409 conflict notice** | *override* | — | yes, surfaced through the shell toast + retry |
+
+**Overrides are deliberate.** Jev was asked whether to defer board status changes and the
+conflict notice; both capabilities already exist in v0.1, so deferring them would be a
+functional regression. A rebuild may change how a capability looks, never silently remove
+it. The board keeps status changes through a move sheet (not free drag) and the shell
+keeps surfacing conflicts.
+
+**Haptics note:** `LocalHapticFeedback` fires on task completion and on applying a
+proposal. No vibration permission is required.
+
+### 12.2 Design alternatives (pairwise tournament, `jev_judge.py tournament`)
+
+Single-pick questions came back with low discrimination, so each was re-run as a
+pairwise Noul tournament with Copeland aggregation:
+
+| Question | Winner | Copeland |
+|---|---|---|
+| Tasks header composition | `compact_band` | 2.0 |
+| Board column width | `col_232` (232dp) | 2.0 |
+| Voice result placement | `below_orb` | 1.5 |
+| Composer surface | `full_canvas` (stacked cards on brand) | 2.0 |
+| System statistics | `list_rows` | 2.0 |
+| Login layout | `split` (brand block + white panel) | 1.5 |
+
+Two of these reversed the single-pick answers (composer: bottom sheet → full canvas;
+System: stat grid → list rows). That is exactly why the tournament exists.
+
+### 12.3 Where the implementation deviates from the reference, and why
+
+| Reference detail | Shipped | Reason |
+|---|---|---|
+| Streak pill in the header | Hidden when the count is 0 | The product has no streak data; a fake "0" is noise |
+| Gift icon | Search icon | No rewards system; search is a real need |
+| S/M/L/XL effort chips in the composer | Omitted | `createTask` persists no estimate; the chips would lie |
+| Tags + private note in the composer | Omitted | Same reason — not persisted on create |
+| Time-wheel picker | Explicit scope rows | No wheel widget; rows are faster and accessible |
+| Free drag between board columns | Long-press move sheet | Same capability, robust at any font scale |
+| Floating submit FAB in the composer | Full-width inverted button | On device the FAB overlapped the button |
+| 7-day usage bars / heatmap | Not rendered | The API exposes aggregates only |
+| Per-list colour theming | Single brand accent | Jev D2; keeps semantics unambiguous |
+
+### 12.4 Defects found on device and fixed
+
+Found only by running the build on real hardware, not by compiling:
+
+1. Voice headline sat under the status bar — Speak lacked `statusBarsPadding`.
+2. `Locale.ROOT` produced "6 M11" instead of "6 Nov" (root locale has no month names).
+3. Hint/footer copy used `mutedSoft`, a decorative-only token (failed AA) — switched to `muted`.
+4. Detail-sheet cards were invisible (white card on white sheet) — warm surfaces instead.
+5. "Waiting" chip clipped in the move row — `FlowRow` wrapping.
+6. Composer's disabled primary button was unreadable on the brand canvas — inverted button
+   with an outline disabled state.
+7. The submit FAB overlapped the composer button — FAB removed.
+8. Status-bar icons were dark-on-dark in dark mode for Speak/System — icon polarity now
+   derives from the palette, not the tab alone.
+9. At 200% font scale the header chips collided with the segmented toggle and the bottom
+   bar clipped its labels — the band is now a `FlowRow` and the bar uses `heightIn(min)`.
+
+Full reproduction log and screenshots: `.agents/design/verification.md`.
