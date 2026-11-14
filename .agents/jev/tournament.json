@@ -1,0 +1,121 @@
+{
+  "model": "jev-1.14.0",
+  "usage": {
+    "input_tokens": 2532,
+    "output_tokens": 318
+  },
+  "pairs": {
+    "saturated_band vs white_header": {
+      "p": 0.52,
+      "winner": "tie"
+    },
+    "saturated_band vs compact_band": {
+      "p": 0.37,
+      "winner": "compact_band"
+    },
+    "white_header vs compact_band": {
+      "p": 0.34,
+      "winner": "compact_band"
+    },
+    "col_260 vs col_82pct": {
+      "p": 0.4,
+      "winner": "col_82pct"
+    },
+    "col_260 vs col_232": {
+      "p": 0.32,
+      "winner": "col_232"
+    },
+    "col_82pct vs col_232": {
+      "p": 0.26,
+      "winner": "col_232"
+    },
+    "below_orb vs in_place": {
+      "p": 0.64,
+      "winner": "below_orb"
+    },
+    "below_orb vs sheet": {
+      "p": 0.49,
+      "winner": "tie"
+    },
+    "in_place vs sheet": {
+      "p": 0.33,
+      "winner": "sheet"
+    },
+    "full_canvas vs bottom_sheet": {
+      "p": 0.68,
+      "winner": "full_canvas"
+    },
+    "full_canvas vs inline_page": {
+      "p": 0.67,
+      "winner": "full_canvas"
+    },
+    "bottom_sheet vs inline_page": {
+      "p": 0.55,
+      "winner": "tie"
+    },
+    "grid_2x2 vs row_scroll": {
+      "p": 0.43,
+      "winner": "tie"
+    },
+    "grid_2x2 vs list_rows": {
+      "p": 0.34,
+      "winner": "list_rows"
+    },
+    "row_scroll vs list_rows": {
+      "p": 0.32,
+      "winner": "list_rows"
+    },
+    "brand_hero vs minimal": {
+      "p": 0.49,
+      "winner": "tie"
+    },
+    "brand_hero vs split": {
+      "p": 0.44,
+      "winner": "tie"
+    },
+    "minimal vs split": {
+      "p": 0.29,
+      "winner": "split"
+    }
+  },
+  "copeland": {
+    "X1_tasks_header": {
+      "saturated_band": 0.5,
+      "white_header": 0.5,
+      "compact_band": 2.0
+    },
+    "X2_board_column": {
+      "col_260": 0.0,
+      "col_82pct": 1.0,
+      "col_232": 2.0
+    },
+    "X3_speak_result": {
+      "below_orb": 1.5,
+      "in_place": 0.0,
+      "sheet": 1.5
+    },
+    "X4_composer": {
+      "full_canvas": 2.0,
+      "bottom_sheet": 0.5,
+      "inline_page": 0.5
+    },
+    "X5_system_stats": {
+      "grid_2x2": 0.5,
+      "row_scroll": 0.5,
+      "list_rows": 2.0
+    },
+    "X6_login": {
+      "brand_hero": 1.0,
+      "minimal": 0.5,
+      "split": 1.5
+    }
+  },
+  "winners": {
+    "X1_tasks_header": "compact_band",
+    "X2_board_column": "col_232",
+    "X3_speak_result": "below_orb",
+    "X4_composer": "full_canvas",
+    "X5_system_stats": "list_rows",
+    "X6_login": "split"
+  }
+}

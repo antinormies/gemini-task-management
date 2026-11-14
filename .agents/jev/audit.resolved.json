@@ -1,0 +1,128 @@
+{
+  "F1_voice_from_any_tab": {
+    "choice": "include_v1",
+    "jev_choice": "include_v1",
+    "confidence": 0.7,
+    "applied": "jev"
+  },
+  "F2_swipe_to_complete": {
+    "choice": "defer_v1_1",
+    "jev_choice": "include_v1",
+    "confidence": 0.28,
+    "applied": "fallback"
+  },
+  "F3_pull_to_refresh": {
+    "choice": "include_v1",
+    "jev_choice": "include_v1",
+    "confidence": 0.96,
+    "applied": "jev"
+  },
+  "F4_manual_theme_toggle": {
+    "choice": "defer_v1_1",
+    "jev_choice": "defer_v1_1",
+    "confidence": 0.55,
+    "applied": "jev"
+  },
+  "F5_haptics": {
+    "choice": "include_v1",
+    "jev_choice": "include_v1",
+    "confidence": 0.72,
+    "applied": "jev"
+  },
+  "F6_board_drag": {
+    "choice": "defer_v1_1",
+    "jev_choice": "defer_v1_1",
+    "confidence": 0.48,
+    "applied": "jev"
+  },
+  "F7_header_search": {
+    "choice": "include_v1",
+    "jev_choice": "include_v1",
+    "confidence": 0.55,
+    "applied": "jev"
+  },
+  "F8_completion_celebration": {
+    "choice": "defer_v1_1",
+    "jev_choice": "defer_v1_1",
+    "confidence": 0.7,
+    "applied": "jev"
+  },
+  "F9_project_color_dot": {
+    "choice": "include_v1",
+    "jev_choice": "include_v1",
+    "confidence": 0.37,
+    "applied": "fallback"
+  },
+  "F10_offline_banner": {
+    "choice": "include_v1",
+    "jev_choice": "include_v1",
+    "confidence": 0.86,
+    "applied": "jev"
+  },
+  "F11_composer_ime": {
+    "choice": "include_v1",
+    "jev_choice": "include_v1",
+    "confidence": 0.7,
+    "applied": "jev"
+  },
+  "F12_skeleton_loaders": {
+    "choice": "include_v1",
+    "jev_choice": "include_v1",
+    "confidence": 0.68,
+    "applied": "jev"
+  },
+  "F13_empty_states": {
+    "choice": "include_v1",
+    "jev_choice": "include_v1",
+    "confidence": 0.5,
+    "applied": "jev"
+  },
+  "F14_conflict_notice": {
+    "choice": "defer_v1_1",
+    "jev_choice": "defer_v1_1",
+    "confidence": 0.5,
+    "applied": "jev"
+  },
+  "F15_reduced_motion_toggle": {
+    "choice": "defer_v1_1",
+    "jev_choice": "defer_v1_1",
+    "confidence": 0.35,
+    "applied": "fallback"
+  },
+  "X1_tasks_header": {
+    "choice": "saturated_band",
+    "jev_choice": "compact_band",
+    "confidence": 0.19,
+    "applied": "fallback"
+  },
+  "X2_board_column": {
+    "choice": "col_82pct",
+    "jev_choice": "col_260",
+    "confidence": 0.26,
+    "applied": "fallback"
+  },
+  "X3_speak_result": {
+    "choice": "below_orb",
+    "jev_choice": "below_orb",
+    "confidence": 0.34,
+    "applied": "fallback"
+  },
+  "X4_composer": {
+    "choice": "bottom_sheet",
+    "jev_choice": "bottom_sheet",
+    "confidence": 0.49,
+    "applied": "jev"
+  },
+  "X5_system_stats": {
+    "choice": "grid_2x2",
+    "jev_choice": "grid_2x2",
+    "confidence": 0.34,
+    "applied": "fallback"
+  },
+  "X6_login": {
+    "choice": "brand_hero",
+    "jev_choice": "split",
+    "confidence": 0.26,
+    "applied": "fallback"
+  }
+}

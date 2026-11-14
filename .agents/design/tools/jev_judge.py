@@ -382,12 +382,218 @@ def cmd_candidates() -> None:
               f"system={d['system']:.2f} transfer={d['transfer']:.2f} -> {r['weighted']:.3f}")
 
 
+# --------------------------------------------------------------------------- #
+# audit: every remaining design and feature possibility, include or defer
+# --------------------------------------------------------------------------- #
+AUDIT_STATE = {
+    "product": "AntaraTask AI Android app, rebuild of the mobile UI onto the Numo-derived "
+    "system described below. Stack: Kotlin + Jetpack Compose, single Activity, minSdk 31. "
+    "Data: FastAPI backend over HTTPS bearer auth; tasks have status "
+    "(inbox/todo/in_progress/waiting/done), priority (urgent/high/medium/low/none), "
+    "estimate_minutes, due_at, project, tags, subtasks, notes, version. Voice: on-device "
+    "SpeechRecognizer produces a transcript; the server returns a validated proposal the "
+    "user must confirm. Tabs: Speak / Tasks / System.",
+    "design_system": "Numo-derived: brand #0067FF fill, cream #FFF2DB rows alternating "
+    "with white, 800-weight display type, radius 12/20/28 + pill, saturating one region "
+    "per screen, functional-only motion (recording rings, processing dots), white voice "
+    "stage with a 150dp state circle, composer as stacked white cards on the blue canvas, "
+    "FAB cluster (48dp mic + 60dp plus), 3-tab bottom bar.",
+    "constraints": "v1 must stay thin-client and single-user. No offline writes, no teams, "
+    "no push, no gamification. Every AI action requires explicit confirmation. Screens "
+    "must be buildable in Compose within this workstream and verifiable on an emulator.",
+}
+
+FEATURES = [
+    ("F1_voice_from_any_tab", "Starting voice capture from the Tasks or System tab via the mic FAB, instead of only from the Speak tab"),
+    ("F2_swipe_to_complete", "Swipe a task row horizontally to complete or reopen it"),
+    ("F3_pull_to_refresh", "Pull-to-refresh gesture on the Tasks list"),
+    ("F4_manual_theme_toggle", "An in-app light/dark switch, in addition to following the system setting"),
+    ("F5_haptics", "Haptic feedback on capture completion, apply, and destructive confirm"),
+    ("F6_board_drag", "Long-press drag between board columns with edge auto-scroll"),
+    ("F7_header_search", "A search icon in the Tasks header opening a full-screen search sheet"),
+    ("F8_completion_celebration", "A completion-progress card after finishing tasks (streak-like, adapted, no gamification)"),
+    ("F9_project_color_dot", "An 8dp project colour dot in the task meta line"),
+    ("F10_offline_banner", "A warning banner with Retry when the backend is unreachable"),
+    ("F11_composer_ime", "Keyboard-aware composer where the submit FAB floats above the IME"),
+    ("F12_skeleton_loaders", "Warm-tinted skeleton rows while the first page loads"),
+    ("F13_empty_states", "Per-filter empty states with a primary action"),
+    ("F14_conflict_notice", "A 409 version-conflict notice inside the detail sheet that keeps edits on screen"),
+    ("F15_reduced_motion_toggle", "An explicit in-app 'reduce motion' preference in System"),
+]
+
+DESIGNS = [
+    ("X1_tasks_header", "Tasks header composition", {
+        "saturated_band": "Full-bleed brand band with heavy white 'Today' title, streak pill, chips underneath",
+        "white_header": "White header with brand-coloured heavy title and chips below; colour only on the FAB",
+        "compact_band": "Shorter brand band, title inline with chips, more list visible",
+    }),
+    ("X2_board_column", "Board column width", {
+        "col_260": "260dp fixed columns with 12dp gaps",
+        "col_82pct": "82% of screen width so the next column peeks",
+        "col_232": "232dp columns, more adjacent context",
+    }),
+    ("X3_speak_result", "Where the voice result appears", {
+        "below_orb": "Result card replaces the idle tip area below the orb, orb stays visible",
+        "in_place": "Result card replaces the orb entirely once captured",
+        "sheet": "Result opens as a bottom sheet over the voice stage",
+    }),
+    ("X4_composer", "Quick-add surface", {
+        "full_canvas": "Full-screen blue canvas with stacked white cards",
+        "bottom_sheet": "Bottom sheet with the same cards on a white sheet",
+        "inline_page": "Pushed page with a white background and card sections",
+    }),
+    ("X5_system_stats", "System stat presentation", {
+        "grid_2x2": "2x2 grid of warm stat cards with 44sp numbers",
+        "row_scroll": "Horizontally scrolling stat cards",
+        "list_rows": "Plain settings-style rows with values right-aligned",
+    }),
+    ("X6_login", "Login layout", {
+        "brand_hero": "Brand mark + display hero + warm explainer card + Google button",
+        "minimal": "Wordmark, one line of copy, Google button, lots of white",
+        "split": "Coloured top half with mark, white card bottom with the button",
+    }),
+]
+
+
+def audit_questions() -> dict:
+    q = {}
+    for key, desc in FEATURES:
+        q[key] = {
+            "type": "choice",
+            "instructions": f"Should v1 of this rebuild include this feature: {desc}?",
+            "criteria": {
+                "include_v1": "Belongs in this v1 rebuild; the design system and existing data support it without new backend work",
+                "defer_v1_1": "Valuable but out of scope for this rebuild",
+                "reject": "Should not be built at all for this product",
+            },
+        }
+    for key, label, options in DESIGNS:
+        q[key] = {
+            "type": "choice",
+            "instructions": f"Which option is the strongest design for {label}, judged against the token system, the reference, and the product's voice-first identity?",
+            "criteria": options,
+        }
+    return q
+
+
+AUDIT_FALLBACK = {
+    "F1_voice_from_any_tab": "include_v1",
+    "F2_swipe_to_complete": "defer_v1_1",
+    "F3_pull_to_refresh": "defer_v1_1",
+    "F4_manual_theme_toggle": "defer_v1_1",
+    "F5_haptics": "include_v1",
+    "F6_board_drag": "include_v1",
+    "F7_header_search": "include_v1",
+    "F8_completion_celebration": "defer_v1_1",
+    "F9_project_color_dot": "include_v1",
+    "F10_offline_banner": "include_v1",
+    "F11_composer_ime": "include_v1",
+    "F12_skeleton_loaders": "include_v1",
+    "F13_empty_states": "include_v1",
+    "F14_conflict_notice": "include_v1",
+    "F15_reduced_motion_toggle": "defer_v1_1",
+    "X1_tasks_header": "saturated_band",
+    "X2_board_column": "col_82pct",
+    "X3_speak_result": "below_orb",
+    "X4_composer": "full_canvas",
+    "X5_system_stats": "grid_2x2",
+    "X6_login": "brand_hero",
+}
+
+
+def cmd_audit() -> None:
+    rec = ask(AUDIT_STATE, audit_questions(), "audit")
+    show(rec)
+    resolved = resolve(rec, AUDIT_FALLBACK)
+    (OUT / "audit.resolved.json").write_text(json.dumps(resolved, indent=2) + "\n")
+    print("\nresolved:")
+    for q, v in resolved.items():
+        print(f"  {q:<28} {v['choice']:<16} conf={v['confidence']:.2f} via {v['applied']}")
+
+
+
+# --------------------------------------------------------------------------- #
+# tournament: pairwise Noul comparisons + Copeland aggregation for design options
+# --------------------------------------------------------------------------- #
+TOURNAMENT_PROMPT = (
+    "Judged against the design system and product context, is {a} the stronger design "
+    "choice than {b} for {label}? Answer yes only if it is clearly better on usability, "
+    "consistency with the token system, and reference fidelity; answer no when they are "
+    "close enough that the difference does not justify a preference."
+)
+
+
+def cmd_tournament() -> None:
+    state = {"context": AUDIT_STATE}
+    pairs = []
+    for label_key, label, options in DESIGNS:
+        names = list(options)
+        for i, a in enumerate(names):
+            for b in names[i + 1:]:
+                pairs.append((label_key, label, options, a, b))
+
+    questions = {}
+    for idx, (label_key, label, options, a, b) in enumerate(pairs):
+        questions[f"p{idx}"] = {
+            "type": "noul",
+            "instructions": TOURNAMENT_PROMPT.format(
+                a=f"{label_key} option '{a}' ({options[a]})",
+                b=f"option '{b}' ({options[b]})",
+                label=label,
+            ),
+        }
+    rec = ask(state, questions, "tournament")
+
+    # Copeland: +1 win, +0.5 tie (0.4..0.6 band is treated as no decision), 0 loss.
+    score = {}
+    results = {}
+    for idx, (label_key, label, options, a, b) in enumerate(pairs):
+        p_yes = rec["answers"][f"p{idx}"]["noul"]
+        if p_yes >= 0.6:
+            winner, loser = a, b
+        elif p_yes <= 0.4:
+            winner, loser = b, a
+        else:
+            winner = loser = None
+        results[f"{a} vs {b}"] = {"p": round(p_yes, 3), "winner": winner or "tie"}
+        score.setdefault(label_key, {}).setdefault(a, 0.0)
+        score.setdefault(label_key, {}).setdefault(b, 0.0)
+        if winner:
+            score[label_key][winner] += 1.0
+        else:
+            score[label_key][a] += 0.5
+            score[label_key][b] += 0.5
+
+    winners = {}
+    print(f"\n{'question':<28}{'option':<18}{'copeland':>9}")
+    for label_key, label, options in DESIGNS:
+        table = score.get(label_key, {})
+        ordered = sorted(table.items(), key=lambda kv: (-kv[1], list(options).index(kv[0])))
+        winners[label_key] = ordered[0][0]
+        for name, value in ordered:
+            print(f"{label_key:<28}{name:<18}{value:>9.1f}")
+        print()
+
+    for pair, r in results.items():
+        print(f"  {pair:<48} p={r['p']:.2f} -> {r['winner']}")
+
+    payload = {"model": rec["model"], "usage": rec["usage"], "pairs": results, "copeland": score, "winners": winners}
+    (OUT / "tournament.json").write_text(json.dumps(payload, indent=2) + "\n")
+    print("\nwinners:")
+    for k, v in winners.items():
+        print(f"  {k:<28} {v}")
+
+
 def main() -> int:
     cmd = sys.argv[1] if len(sys.argv) > 1 else "decide"
     if cmd == "palette":
         cmd_palette()
     elif cmd == "decide":
         cmd_decide()
+    elif cmd == "audit":
+        cmd_audit()
+    elif cmd == "tournament":
+        cmd_tournament()
     elif cmd == "verify":
         return cmd_verify()
     elif cmd == "candidates":

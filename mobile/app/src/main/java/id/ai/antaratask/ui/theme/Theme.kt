@@ -224,6 +224,7 @@ data class NumoSizes(
     val rowHeight: androidx.compose.ui.unit.Dp = 72.dp,
     val checkbox: androidx.compose.ui.unit.Dp = 26.dp,
     val orb: androidx.compose.ui.unit.Dp = 150.dp,
+    val orbCore: androidx.compose.ui.unit.Dp = 96.dp,
     val orbGlyph: androidx.compose.ui.unit.Dp = 56.dp,
     val micFab: androidx.compose.ui.unit.Dp = 48.dp,
     val addFab: androidx.compose.ui.unit.Dp = 60.dp,
