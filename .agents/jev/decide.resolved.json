@@ -1,0 +1,50 @@
+{
+  "D1_display_font": {
+    "choice": "jakarta_extrabold",
+    "jev_choice": "jakarta_extrabold",
+    "confidence": 0.97,
+    "applied": "jev"
+  },
+  "D2_accent_model": {
+    "choice": "brand_plus_semantic",
+    "jev_choice": "brand_plus_semantic",
+    "confidence": 0.83,
+    "applied": "jev"
+  },
+  "D3_tasks_default_view": {
+    "choice": "list_first",
+    "jev_choice": "list_first",
+    "confidence": 0.1,
+    "applied": "fallback"
+  },
+  "D4_voice_stage": {
+    "choice": "white_stage",
+    "jev_choice": "white_stage",
+    "confidence": 0.83,
+    "applied": "jev"
+  },
+  "D5_row_surface": {
+    "choice": "alternating",
+    "jev_choice": "alternating",
+    "confidence": 0.96,
+    "applied": "jev"
+  },
+  "D6_board_treatment": {
+    "choice": "white_cards_tinted_head",
+    "jev_choice": "white_cards_tinted_head",
+    "confidence": 0.66,
+    "applied": "jev"
+  },
+  "D7_radius_scale": {
+    "choice": "rs_12_20_28",
+    "jev_choice": "rs_12_20_28",
+    "confidence": 0.86,
+    "applied": "jev"
+  },
+  "D8_motion": {
+    "choice": "functional_pulse",
+    "jev_choice": "functional_pulse",
+    "confidence": 1.0,
+    "applied": "jev"
+  }
+}

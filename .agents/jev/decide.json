@@ -1,0 +1,91 @@
+{
+  "name": "decide",
+  "model": "jev-1.14.0",
+  "usage": {
+    "input_tokens": 1743,
+    "output_tokens": 396
+  },
+  "state_sha256": "c8f66396539fc34f",
+  "questions_sha256": "50c48e12f97eb305",
+  "answers": {
+    "D1_display_font": {
+      "type": "choice",
+      "choice": "jakarta_extrabold",
+      "confidence": 0.97,
+      "probabilities": {
+        "jakarta_extrabold": 0.98,
+        "inter_tight_black": 0.02,
+        "roboto_black": 0.0
+      }
+    },
+    "D2_accent_model": {
+      "type": "choice",
+      "choice": "brand_plus_semantic",
+      "confidence": 0.83,
+      "probabilities": {
+        "single_brand": 0.09,
+        "brand_plus_semantic": 0.89,
+        "per_list_theming": 0.02
+      }
+    },
+    "D3_tasks_default_view": {
+      "type": "choice",
+      "choice": "list_first",
+      "confidence": 0.1,
+      "probabilities": {
+        "list_first": 0.55,
+        "board_first": 0.45
+      }
+    },
+    "D4_voice_stage": {
+      "type": "choice",
+      "choice": "white_stage",
+      "confidence": 0.83,
+      "probabilities": {
+        "white_stage": 0.89,
+        "dark_stage": 0.03,
+        "tinted_stage": 0.08
+      }
+    },
+    "D5_row_surface": {
+      "type": "choice",
+      "choice": "alternating",
+      "confidence": 0.96,
+      "probabilities": {
+        "warm_default": 0.02,
+        "state_tint": 0.01,
+        "alternating": 0.97
+      }
+    },
+    "D6_board_treatment": {
+      "type": "choice",
+      "choice": "white_cards_tinted_head",
+      "confidence": 0.66,
+      "probabilities": {
+        "white_cards_tinted_head": 0.77,
+        "cream_canvas_cards": 0.14,
+        "filled_columns": 0.09
+      }
+    },
+    "D7_radius_scale": {
+      "type": "choice",
+      "choice": "rs_12_20_28",
+      "confidence": 0.86,
+      "probabilities": {
+        "rs_12_20_28": 0.91,
+        "rs_16_24_32": 0.05,
+        "rs_8_16_24": 0.04
+      }
+    },
+    "D8_motion": {
+      "type": "choice",
+      "choice": "functional_pulse",
+      "confidence": 1.0,
+      "probabilities": {
+        "functional_pulse": 1.0,
+        "expressive": 0.0,
+        "minimal": 0.0
+      }
+    }
+  }
+}

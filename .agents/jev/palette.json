@@ -1,0 +1,113 @@
+{
+  "name": "palette",
+  "model": "jev-1.14.0",
+  "usage": {
+    "input_tokens": 1859,
+    "output_tokens": 665
+  },
+  "state_sha256": "560721498149c1a6",
+  "questions_sha256": "736dbdeff5d0470a",
+  "answers": {
+    "primary": {
+      "type": "choice",
+      "choice": "#0067FF",
+      "confidence": 1.0,
+      "probabilities": {
+        "#0067FF": 1.0,
+        "#01C459": 0.0,
+        "#FF3E32": 0.0,
+        "#FF9901": 0.0,
+        "#FD31C8": 0.0,
+        "#2F2F2F": 0.0
+      }
+    },
+    "warm_surface": {
+      "type": "choice",
+      "choice": "#FFF2DB",
+      "confidence": 1.0,
+      "probabilities": {
+        "#FFF2DB": 1.0,
+        "#D7F5E4": 0.0,
+        "#F3F3F3": 0.0,
+        "#7F7F7F": 0.0
+      }
+    },
+    "success": {
+      "type": "choice",
+      "choice": "#01C459",
+      "confidence": 1.0,
+      "probabilities": {
+        "#01C459": 1.0,
+        "#0067FF": 0.0,
+        "#FF9901": 0.0,
+        "#2F2F2F": 0.0
+      }
+    },
+    "danger": {
+      "type": "choice",
+      "choice": "#FF3E32",
+      "confidence": 1.0,
+      "probabilities": {
+        "#FF3E32": 1.0,
+        "#FD31C8": 0.0,
+        "#FF9901": 0.0,
+        "#0067FF": 0.0
+      }
+    },
+    "warning": {
+      "type": "choice",
+      "choice": "#FF9901",
+      "confidence": 0.97,
+      "probabilities": {
+        "#FF9901": 0.98,
+        "#01C459": 0.02,
+        "#FD31C8": 0.0,
+        "#F3F3F3": 0.0
+      }
+    },
+    "accent_social": {
+      "type": "choice",
+      "choice": "#F549C8",
+      "confidence": 0.65,
+      "probabilities": {
+        "#FD31C8": 0.17,
+        "#FF9901": 0.09,
+        "#01C459": 0.0,
+        "#F549C8": 0.74
+      }
+    },
+    "ink": {
+      "type": "choice",
+      "choice": "#000000",
+      "confidence": 1.0,
+      "probabilities": {
+        "#000000": 1.0,
+        "#2F2F2F": 0.0,
+        "#7F7F7F": 0.0,
+        "#0067FF": 0.0
+      }
+    },
+    "ink_body": {
+      "type": "choice",
+      "choice": "#2F2F2F",
+      "confidence": 0.97,
+      "probabilities": {
+        "#2F2F2F": 0.98,
+        "#000000": 0.02,
+        "#7F7F7F": 0.0,
+        "#0067FF": 0.0
+      }
+    },
+    "muted": {
+      "type": "choice",
+      "choice": "#7F7F7F",
+      "confidence": 1.0,
+      "probabilities": {
+        "#7F7F7F": 1.0,
+        "#2F2F2F": 0.0,
+        "#F3F3F3": 0.0,
+        "#D7F5E4": 0.0
+      }
+    }
+  }
+}
