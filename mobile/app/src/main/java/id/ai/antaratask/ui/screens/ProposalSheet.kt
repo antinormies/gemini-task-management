@@ -1,7 +1,6 @@
 package id.ai.antaratask.ui.screens
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,99 +9,85 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import id.ai.antaratask.data.Proposal
-import id.ai.antaratask.ui.components.Pill
-import id.ai.antaratask.ui.theme.GtmColors
+import id.ai.antaratask.ui.components.GhostButton
+import id.ai.antaratask.ui.components.NumoSheet
+import id.ai.antaratask.ui.components.PrimaryButton
+import id.ai.antaratask.ui.theme.NumoTheme
+import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Proposal review. The server has already validated the action; this sheet is the human
+ * confirmation gate, so it leads with the transcript's meaning and the exact diff.
+ */
 @Composable
 fun ProposalSheet(
     proposal: Proposal,
     onApply: () -> Unit,
     onDiscard: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDiscard,
-        sheetState = sheetState,
-        containerColor = Color(0xFFFDFBFF)
-    ) {
+    val c = NumoTheme.colors
+    val space = NumoTheme.space
+
+    NumoSheet(onDismiss = onDiscard) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp)
-                .padding(bottom = 28.dp)
+                .padding(horizontal = space.gutter)
+                .padding(bottom = space.xxl)
         ) {
-            Text("AI PROPOSAL", style = MaterialTheme.typography.labelMedium, color = GtmColors.speakMuted)
-            Spacer(Modifier.height(4.dp))
+            Text("Review before saving", style = NumoTheme.type.label, color = c.muted)
+            Spacer(Modifier.height(space.sm))
             Text(
-                proposal.intent.replace("_", " "),
-                style = MaterialTheme.typography.titleLarge,
-                color = GtmColors.speakInk
+                proposal.message.ifBlank { "Here is what I understood." },
+                style = NumoTheme.type.bodyL,
+                color = c.inkBody
             )
-            Spacer(Modifier.height(6.dp))
-            Text(proposal.message, style = MaterialTheme.typography.bodyMedium, color = GtmColors.speakMuted)
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (proposal.confidence > 0.0) {
-                    Pill(
-                        "Confidence " + (proposal.confidence * 100).toInt() + "%",
-                        color = GtmColors.speakMuted,
-                        background = GtmColors.speakAccentSoft
-                    )
-                }
-                if (proposal.requiresConfirmation) {
-                    Pill("Confirm", color = Color(0xFF9A5B12), background = Color(0xFFFFF0DD))
-                }
-            }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(space.md))
             proposal.preview.forEach { item ->
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp)
+                        .clip(NumoTheme.radius.row)
+                        .background(c.surfaceWarmSoft)
+                        .padding(14.dp)
                 ) {
-                    Text(item.op.uppercase(), style = MaterialTheme.typography.labelMedium, color = GtmColors.speakAccent)
-                    Text(item.title, style = MaterialTheme.typography.titleMedium, color = GtmColors.speakInk)
-                    Text(item.summary, style = MaterialTheme.typography.bodySmall, color = GtmColors.speakMuted)
+                    Text(item.title, style = NumoTheme.type.titleM, color = c.ink)
+                    Spacer(Modifier.height(4.dp))
+                    Text(item.summary, style = NumoTheme.type.meta, color = c.muted)
                 }
-                androidx.compose.material3.Divider(color = GtmColors.speakLine)
+                Spacer(Modifier.height(space.sm))
             }
-            Spacer(Modifier.height(18.dp))
-            Button(
-                onClick = onApply,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = GtmColors.speakAccent,
-                    contentColor = Color.White
+            if (proposal.preview.isEmpty()) {
+                Text(
+                    "No field changes detected.",
+                    style = NumoTheme.type.meta,
+                    color = c.muted
                 )
-            ) { Text("Apply changes") }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onDiscard,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = GtmColors.speakAccent),
-                border = BorderStroke(1.dp, GtmColors.speakLine)
-            ) { Text("Discard") }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Destructive actions always require this confirmation. Nothing is applied automatically.",
-                style = MaterialTheme.typography.bodySmall,
-                color = GtmColors.speakMuted
+                Spacer(Modifier.height(space.sm))
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Confidence ${(proposal.confidence * 100).roundToInt()}%",
+                    style = NumoTheme.type.meta,
+                    color = if (proposal.confidence < 0.6) c.dangerStrong else c.muted
+                )
+            }
+            Spacer(Modifier.height(space.lg))
+            PrimaryButton(
+                label = "Apply",
+                onClick = onApply,
+                modifier = Modifier.fillMaxWidth()
             )
+            Spacer(Modifier.height(space.xs))
+            GhostButton("Discard", onDiscard, Modifier.fillMaxWidth())
         }
     }
 }

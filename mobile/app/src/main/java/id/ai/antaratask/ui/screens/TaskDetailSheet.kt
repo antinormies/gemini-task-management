@@ -1,5 +1,8 @@
 package id.ai.antaratask.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,22 +10,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,23 +30,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import id.ai.antaratask.data.Project
 import id.ai.antaratask.data.Task
-import id.ai.antaratask.ui.components.Pill
-import id.ai.antaratask.ui.components.PriorityPill
-import id.ai.antaratask.ui.components.SectionLabel
-import id.ai.antaratask.ui.components.formatEstimate
-import id.ai.antaratask.ui.components.priorityLabel
+import id.ai.antaratask.ui.components.NumoCheckbox
+import id.ai.antaratask.ui.components.NumoSheet
+import id.ai.antaratask.ui.components.SectionTitle
+import id.ai.antaratask.ui.components.StackCard
+import id.ai.antaratask.ui.components.dueLabel
+import id.ai.antaratask.ui.components.estimateLabel
 import id.ai.antaratask.ui.components.statusLabel
-import id.ai.antaratask.ui.theme.GtmColors
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import id.ai.antaratask.ui.theme.NumoTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Task detail as stacked cards inside a 28dp sheet. Read-heavy: the sheet is where a
+ * task is understood, so the chrome stays minimal and the destructive action sits last.
+ */
 @Composable
 fun TaskDetailSheet(
     task: Task,
@@ -57,214 +58,271 @@ fun TaskDetailSheet(
     onArchive: (Task) -> Unit,
     onAddSubtask: (Task, String) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var title by remember(task.id) { mutableStateOf(task.title) }
-    var notes by remember(task.id) { mutableStateOf(task.description) }
-    var status by remember(task.id) { mutableStateOf(task.status) }
-    var priority by remember(task.id) { mutableStateOf(task.priority) }
-    var projectId by remember(task.id) { mutableStateOf(task.projectId) }
-    var due by remember(task.id) {
-        mutableStateOf(
-            task.dueAt?.let {
-                runCatching {
-                    OffsetDateTime.parse(it).atZoneSameInstant(ZoneId.systemDefault())
-                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-                }.getOrDefault("")
-            } ?: ""
-        )
-    }
-    var estimate by remember(task.id) { mutableStateOf(task.estimateMinutes?.toString() ?: "") }
-    var tags by remember(task.id) { mutableStateOf(task.tags.joinToString(", ") { it.name }) }
+    val c = NumoTheme.colors
+    val space = NumoTheme.space
+    var subtask by remember { mutableStateOf("") }
     var confirmArchive by remember { mutableStateOf(false) }
-    var newSubtask by remember(task.id) { mutableStateOf("") }
 
-    if (confirmArchive) {
-        AlertDialog(
-            onDismissRequest = { confirmArchive = false },
-            title = { Text("Archive this task?") },
-            text = { Text("The task will be hidden, not deleted.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmArchive = false
-                    onArchive(task)
-                }) { Text("Archive", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = { TextButton(onClick = { confirmArchive = false }) { Text("Cancel") } }
-        )
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onClose,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    ) {
+    NumoSheet(onDismiss = onClose) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp)
-                .padding(bottom = 28.dp)
+                .imePadding()
+                .padding(horizontal = space.gutter)
+                .padding(bottom = 96.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(statusLabel(task.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        title.ifBlank { "Task" },
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                TextButton(onClick = onClose) { Text("Close") }
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PriorityPill(priority)
-                task.projectName?.let { Pill(it) }
-                formatEstimate(task.estimateMinutes)?.let { Pill(it) }
-                if (task.status == "backlog") Pill("Backlog")
-            }
-            Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title") },
-                modifier = Modifier.fillMaxWidth()
+            Text(
+                "${task.shortKey} · ${statusLabel(task.status)} · v${task.version}",
+                style = NumoTheme.type.label,
+                color = c.muted
             )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it },
-                label = { Text("Notes") },
-                minLines = 3,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-            Picker("Status", statusLabel(status), listOf("backlog", "research", "sprint", "review", "done").map { it to statusLabel(it) }) {
-                status = it
-            }
-            Spacer(Modifier.height(8.dp))
-            Picker("Priority", priorityLabel(priority), listOf("none", "low", "medium", "high", "urgent").map { it to priorityLabel(it) }) {
-                priority = it
-            }
-            Spacer(Modifier.height(8.dp))
-            Picker(
-                "Project",
-                projects.firstOrNull { it.id == projectId }?.name ?: "No project",
-                listOf("" to "No project") + projects.map { it.id to it.name }
-            ) { projectId = it.ifBlank { null } }
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = due,
-                onValueChange = { due = it },
-                label = { Text("Due (yyyy-MM-dd HH:mm)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = estimate,
-                onValueChange = { estimate = it.filter { ch -> ch.isDigit() } },
-                label = { Text("Estimate (minutes)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = tags,
-                onValueChange = { tags = it },
-                label = { Text("Tags (comma separated)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = {
-                        val dueIso = due.trim().takeIf { it.isNotBlank() }?.let {
-                            runCatching {
-                                LocalDateTime.parse(it, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-                                    .atZone(ZoneId.systemDefault()).toInstant().toString()
-                            }.getOrNull()
-                        }
-                        onSave(
-                            task,
-                            mapOf(
-                                "title" to title.trim(),
-                                "description" to notes,
-                                "status" to status,
-                                "priority" to priority,
-                                "project_id" to projectId,
-                                "due_at" to dueIso,
-                                "estimate_minutes" to estimate.toIntOrNull(),
-                                "tags" to tags.split(",").map { value -> value.trim() }.filter { value -> value.isNotEmpty() }
-                            )
-                        )
-                    },
-                    modifier = Modifier.weight(1f)
-                ) { Text("Save") }
-                OutlinedButton(onClick = { onToggle(task) }) {
-                    Text(if (task.isDone) "Reopen" else "Complete")
-                }
-            }
-            TextButton(onClick = { confirmArchive = true }) { Text("Archive", color = MaterialTheme.colorScheme.error) }
-            Spacer(Modifier.height(12.dp))
-            SectionLabel("Checklist")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = newSubtask,
-                    onValueChange = { newSubtask = it },
-                    placeholder = { Text("Add a subtask") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
+            Spacer(Modifier.height(space.sm))
+            Row(verticalAlignment = Alignment.Top) {
+                Spacer(Modifier.height(4.dp))
+                NumoCheckbox(
+                    checked = task.isDone,
+                    onToggle = { onToggle(task) },
+                    contentDescription = if (task.isDone) "Reopen task" else "Complete task"
                 )
-                TextButton(onClick = {
-                    onAddSubtask(task, newSubtask)
-                    newSubtask = ""
-                }) { Text("Add") }
+                Spacer(Modifier.width(space.md))
+                Text(task.title, style = NumoTheme.type.titleL, color = c.ink)
             }
-            if (task.subtasks.isEmpty()) {
-                Text("No subtasks yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
-            } else {
-                task.subtasks.forEach { child ->
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-                        Text(if (child.isDone) "✓" else "○", color = if (child.isDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.width(8.dp))
-                        Text(child.title, style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(Modifier.height(space.md))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScrollable(),
+                horizontalArrangement = Arrangement.spacedBy(space.sm)
+            ) {
+                InfoChip(statusLabel(task.status), c.brandSoft, c.brandStrong)
+                PriorityChip(task.priority) {
+                    onSave(task, mapOf("priority" to nextPriority(task.priority)))
+                }
+                task.projectName?.let { InfoChip(it, c.surfaceWarm, c.inkBody) }
+                dueLabel(task)?.let { InfoChip(it, c.surfaceWarm, c.inkBody) }
+                estimateLabel(task.estimateMinutes)?.let { InfoChip(it, c.surfaceWarm, c.inkBody) }
+            }
+
+            Spacer(Modifier.height(space.lg))
+            StackCard(color = c.surface) {
+                Column {
+                    KeyValueRow("Status", statusLabel(task.status))
+                    KeyValueRow("Priority", task.priority.replaceFirstChar { it.uppercase() })
+                    KeyValueRow("Project", task.projectName ?: "Inbox")
+                    KeyValueRow("Estimate", estimateLabel(task.estimateMinutes) ?: "—")
+                    KeyValueRow("Due", dueLabel(task) ?: "—")
+                    KeyValueRow("Updated", task.events.lastOrNull()?.createdAt?.take(16)?.replace("T", " ") ?: "—")
+                }
+            }
+
+            Spacer(Modifier.height(space.md))
+            StackCard(color = c.surface) {
+                Column {
+                    SectionTitle("Subtasks", trailing = task.subtasks.size.toString())
+                    Spacer(Modifier.height(space.sm))
+                    task.subtasks.forEach { child ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            NumoCheckbox(
+                                checked = child.isDone,
+                                onToggle = { onToggle(child) },
+                                contentDescription = if (child.isDone) {
+                                    "Reopen ${child.title}"
+                                } else {
+                                    "Complete ${child.title}"
+                                }
+                            )
+                            Spacer(Modifier.width(space.md))
+                            Text(
+                                child.title,
+                                style = NumoTheme.type.bodyM,
+                                color = if (child.isDone) c.muted else c.inkBody
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(space.sm))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = subtask,
+                            onValueChange = { subtask = it },
+                            placeholder = { Text("Type subtask", style = NumoTheme.type.bodyM, color = c.muted) },
+                            singleLine = true,
+                            shape = NumoTheme.radius.control,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(space.sm))
+                        Box(
+                            Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(22.dp))
+                                .background(c.brand)
+                                .clickable {
+                                    if (subtask.isNotBlank()) {
+                                        onAddSubtask(task, subtask.trim())
+                                        subtask = ""
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Rounded.ArrowUpward,
+                                contentDescription = "Add subtask",
+                                tint = c.onBrand,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            SectionLabel("Activity")
-            task.events.take(8).forEach { event ->
-                Text(
-                    event.eventType + " · " + event.actor + " · " + event.createdAt.take(16).replace("T", " "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+
+            if (task.description.isNotBlank()) {
+                Spacer(Modifier.height(space.md))
+                StackCard(color = c.surfaceWarmSoft) {
+                    Column {
+                        SectionTitle("Notes")
+                        Spacer(Modifier.height(space.sm))
+                        Text(task.description, style = NumoTheme.type.bodyL, color = c.inkBody)
+                    }
+                }
             }
-            Spacer(Modifier.height(20.dp))
+
+            Spacer(Modifier.height(space.md))
+            StackCard(color = c.surface) {
+                Column {
+                    SectionTitle("Move to")
+                    Spacer(Modifier.height(space.sm))
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScrollable(),
+                        horizontalArrangement = Arrangement.spacedBy(space.sm)
+                    ) {
+                        listOf("todo", "in_progress", "waiting", "done").forEach { status ->
+                            val active = task.status == status
+                            InfoChip(
+                                label = statusLabel(status),
+                                background = if (active) c.brand else c.surfaceWarm,
+                                content = if (active) c.onBrand else c.inkBody
+                            ) {
+                                if (!active) onSave(task, mapOf("status" to status))
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(space.md))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(NumoTheme.radius.control)
+                    .clickable { confirmArchive = true }
+                    .padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Delete, contentDescription = null, tint = c.dangerStrong, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(space.sm))
+                Text("Archive task", style = NumoTheme.type.titleM, color = c.dangerStrong)
+            }
         }
+    }
+
+    if (confirmArchive) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmArchive = false },
+            shape = NumoTheme.radius.card,
+            containerColor = c.surface,
+            title = { Text("Archive this task?", style = NumoTheme.type.displayM, color = c.ink) },
+            text = {
+                Text(
+                    "It leaves your board but stays in the project history.",
+                    style = NumoTheme.type.bodyM,
+                    color = c.inkBody
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        confirmArchive = false
+                        onArchive(task)
+                    }
+                ) {
+                    Text("Archive", style = NumoTheme.type.titleM, color = c.dangerStrong)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmArchive = false }) {
+                    Text("Keep", style = NumoTheme.type.titleM, color = c.muted)
+                }
+            }
+        )
     }
 }
 
 @Composable
-private fun Picker(label: String, current: String, options: List<Pair<String, String>>, onSelect: (String) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        Box {
-            OutlinedButton(onClick = { open = true }) { Text(current) }
-            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                options.forEach { (value, text) ->
-                    DropdownMenuItem(text = { Text(text) }, onClick = {
-                        open = false
-                        onSelect(value)
-                    })
-                }
-            }
-        }
+private fun KeyValueRow(label: String, value: String) {
+    val c = NumoTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = NumoTheme.type.meta, color = c.muted, modifier = Modifier.width(96.dp))
+        Text(value, style = NumoTheme.type.bodyM, color = c.inkBody)
     }
 }
+
+@Composable
+private fun InfoChip(
+    label: String,
+    background: Color,
+    content: Color,
+    onClick: (() -> Unit)? = null
+) {
+    Box(
+        Modifier
+            .height(NumoTheme.size.chipHeight)
+            .clip(NumoTheme.radius.pill)
+            .background(background)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, style = NumoTheme.type.label, color = content)
+    }
+}
+
+@Composable
+private fun PriorityChip(priority: String, onClick: () -> Unit) {
+    val c = NumoTheme.colors
+    val (fill, ink) = when (priority) {
+        "urgent" -> c.dangerSoft to c.dangerStrong
+        "high" -> c.warningSoft to c.inkBody
+        else -> c.surfaceWarm to c.inkBody
+    }
+    InfoChip(
+        label = priority.replaceFirstChar { it.uppercase() },
+        background = fill,
+        content = ink,
+        onClick = onClick
+    )
+}
+
+private fun nextPriority(current: String): String = when (current) {
+    "none" -> "low"
+    "low" -> "medium"
+    "medium" -> "high"
+    "high" -> "urgent"
+    else -> "none"
+}
+
+@Composable
+private fun Modifier.horizontalScrollable(): Modifier =
+    this.horizontalScroll(rememberScrollState())

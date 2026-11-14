@@ -2,400 +2,297 @@ package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import id.ai.antaratask.MainViewModel
 import id.ai.antaratask.UiState
 import id.ai.antaratask.data.Task
+import id.ai.antaratask.ui.components.AppHeader
+import id.ai.antaratask.ui.components.AvatarBadge
+import id.ai.antaratask.ui.components.ChipRow
+import id.ai.antaratask.ui.components.CompletionMeter
 import id.ai.antaratask.ui.components.EmptyState
-import id.ai.antaratask.ui.components.TaskCard
+import id.ai.antaratask.ui.components.FabCluster
+import id.ai.antaratask.ui.components.NumoSheet
+import id.ai.antaratask.ui.components.OfflineBanner
+import id.ai.antaratask.ui.components.SectionTitle
+import id.ai.antaratask.ui.components.SegmentedToggle
+import id.ai.antaratask.ui.components.SkeletonRows
 import id.ai.antaratask.ui.components.TaskRow
+import id.ai.antaratask.ui.components.dueLabel
 import id.ai.antaratask.ui.components.isOverdue
+import id.ai.antaratask.ui.components.statusLabel
+import id.ai.antaratask.ui.theme.NumoTheme
 import kotlinx.coroutines.delay
-import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import kotlin.math.roundToInt
 
-private data class BoardColumn(val key: String, val label: String)
+private data class StatusColumn(val status: String, val label: String)
 
-private val boardColumns = listOf(
-    BoardColumn("backlog", "Backlog"),
-    BoardColumn("research", "Research"),
-    BoardColumn("sprint", "Sprint"),
-    BoardColumn("review", "Review"),
-    BoardColumn("done", "Done")
+private val StatusColumns = listOf(
+    StatusColumn("todo", "To do"),
+    StatusColumn("in_progress", "In progress"),
+    StatusColumn("waiting", "Waiting"),
+    StatusColumn("done", "Done")
 )
 
-private fun phaseForTask(task: Task): String = when (task.status) {
-    "research" -> "research"
-    "sprint", "in_progress" -> "sprint"
-    "review", "waiting" -> "review"
-    "done" -> "done"
-    else -> "backlog"
-}
-
-private fun statusForPhase(key: String): String = key
-
+/**
+ * Tasks surface: compact brand band, cream/white list rows, and a status board one tap
+ * away. Long-press moves a task between statuses (the deliberate replacement for free
+ * drag), which keeps the gesture accessible and the card hit area unambiguous.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
     state: UiState,
     viewModel: MainViewModel,
     onAdd: () -> Unit,
     onOpen: (String) -> Unit,
-    onToggle: (Task) -> Unit
+    onToggle: (Task) -> Unit,
+    onVoice: () -> Unit
 ) {
-    var board by remember { mutableStateOf(true) }
+    val c = NumoTheme.colors
+    val space = NumoTheme.space
+    var listMode by remember { mutableStateOf(true) }
     var filter by remember { mutableStateOf("all") }
-    var query by remember { mutableStateOf("") }
+    var showSearch by remember { mutableStateOf(false) }
+    var movingTask by remember { mutableStateOf<Task?>(null) }
 
-    var dragTask by remember { mutableStateOf<Task?>(null) }
-    var pointer by remember { mutableStateOf(Offset.Zero) }
-    var cardSize by remember { mutableStateOf(Size.Zero) }
-    var hoverPhase by remember { mutableStateOf<String?>(null) }
-    var lastDragEnd by remember { mutableLongStateOf(0L) }
-    val columnBounds = remember { mutableStateMapOf<String, Rect>() }
-    val cardBounds = remember { mutableStateMapOf<String, Rect>() }
-    val boardState = rememberLazyListState()
-    val density = LocalDensity.current
-    val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
-
-    LaunchedEffect(query) {
-        delay(250)
-        viewModel.search(query)
-    }
-
-    LaunchedEffect(dragTask) {
-        while (dragTask != null) {
-            val edge = with(density) { 70.dp.toPx() }
-            if (pointer.x < edge && boardState.canScrollBackward) {
-                boardState.scrollBy(-18f)
-            } else if (pointer.x > screenWidthPx - edge && boardState.canScrollForward) {
-                boardState.scrollBy(18f)
-            }
-            delay(16)
-        }
-    }
-
-    val filtered = state.tasks.filter { task ->
+    val filtered = remember(state.tasks, filter) {
         when (filter) {
-            "today" -> {
-                val due = task.dueAt?.let { runCatching { OffsetDateTime.parse(it) }.getOrNull() }
-                due == null || due.atZoneSameInstant(ZoneId.systemDefault()).toLocalDate() == LocalDate.now() || isOverdue(task)
+            "today" -> state.tasks.filter { task ->
+                val due = dueLabel(task)
+                !task.isDone && (due != null || task.status == "in_progress")
             }
-            "overdue" -> isOverdue(task)
-            else -> true
+            "overdue" -> state.tasks.filter { it.isOverdue() }
+            else -> state.tasks
         }
     }
+    val doneCount = filtered.count { it.isDone }
+    val projectColors = remember(state.projects) {
+        state.projects.associate { it.id to parseColorOrNull(it.color) }
+    }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "My tasks",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(99.dp),
-                        modifier = Modifier.clickable(onClick = onAdd)
-                    ) {
-                        Text(
-                            "+ New task",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp)
-                        )
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    filtered.size.toString() + " tasks · " + filtered.count { it.isDone } + " done",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text("Search tasks") },
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.large,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(10.dp))
-                Row(
+    Column(Modifier.fillMaxSize().background(c.canvas)) {
+        AppHeader(
+            title = when (filter) {
+                "today" -> "Today"
+                "overdue" -> "Overdue"
+                else -> "All tasks"
+            },
+            accent = c.brand,
+            compact = true,
+            avatarInitials = initialsOf(state.account?.name),
+            onTitleClick = { filter = when (filter) {
+                "all" -> "today"
+                "today" -> "overdue"
+                else -> "all"
+            } },
+            trailing = {
+                Icon(
+                    Icons.Rounded.Search,
+                    contentDescription = "Search tasks",
+                    tint = c.onBrand,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    Surface(color = MaterialTheme.colorScheme.surfaceContainerHighest, shape = RoundedCornerShape(9.dp)) {
-                        Row(Modifier.padding(2.dp)) {
-                            TabButton("Board", board) { board = true }
-                            TabButton("List", !board) { board = false }
-                        }
-                    }
-                    FilterChip("All", filter == "all") { filter = "all" }
-                    FilterChip("Today", filter == "today") { filter = "today" }
-                    FilterChip("Overdue", filter == "overdue") { filter = "overdue" }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Long-press a card and drag it to another phase.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        .clip(NumoTheme.radius.pill)
+                        .clickable { showSearch = true }
+                        .padding(10.dp)
+                        .size(22.dp)
                 )
-                Spacer(Modifier.height(12.dp))
+            },
+            chips = {
+                ChipRow(
+                    items = listOf("All", "Today", "Overdue"),
+                    selected = when (filter) {
+                        "today" -> "Today"
+                        "overdue" -> "Overdue"
+                        else -> "All"
+                    },
+                    onSelect = { label ->
+                        filter = when (label) {
+                            "Today" -> "today"
+                            "Overdue" -> "overdue"
+                            else -> "all"
+                        }
+                    },
+                    onBand = true,
+                    modifier = Modifier.weight(1f)
+                )
+                SegmentedToggle(
+                    options = listOf("List", "Board"),
+                    selectedIndex = if (listMode) 0 else 1,
+                    onSelect = { listMode = it == 0 },
+                    onBand = true
+                )
             }
+        )
 
-            if (filtered.isEmpty()) {
-                EmptyState("Nothing here yet.", "Capture a task from Speak or add one with New.")
-            } else if (board) {
-                LazyRow(
-                    state = boardState,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 4.dp)
+        Box(Modifier.fillMaxSize()) {
+            if (listMode) {
+                PullToRefreshBox(
+                    isRefreshing = state.loading,
+                    onRefresh = { viewModel.refresh() },
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(boardColumns, key = { _, column -> column.key }) { index, column ->
-                        val phaseTasks = filtered.filter { phaseForTask(it) == column.key }
-                        Row(Modifier.height(IntrinsicSize.Min)) {
-                            Column(
-                                Modifier
-                                    .width(248.dp)
-                                    .onGloballyPositioned { coordinates ->
-                                        columnBounds[column.key] = coordinates.boundsInRoot()
-                                    }
-                                    .background(
-                                        if (hoverPhase == column.key) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
-                                        else Color.Transparent,
-                                        RoundedCornerShape(14.dp)
-                                    )
-                                    .padding(10.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        column.label.uppercase(),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                        shape = RoundedCornerShape(99.dp)
-                                    ) {
-                                        Text(
-                                            phaseTasks.size.toString(),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.height(7.dp))
-                                if (phaseTasks.isEmpty()) {
-                                    Surface(
-                                        color = Color.Transparent,
-                                        shape = RoundedCornerShape(14.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                                    ) {
-                                        Text(
-                                            "Drop a task here",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.outline,
-                                            modifier = Modifier.padding(14.dp)
-                                        )
-                                    }
-                                } else {
-                                    phaseTasks.forEach { task ->
-                                        Box(
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .onGloballyPositioned { coordinates ->
-                                                    cardBounds[task.id] = coordinates.boundsInRoot()
-                                                }
-                                                .pointerInput(task.id) {
-                                                    detectTapGestures {
-                                                        if (System.currentTimeMillis() - lastDragEnd > 300L) {
-                                                            onOpen(task.id)
-                                                        }
-                                                    }
-                                                }
-                                                .pointerInput(task.id) {
-                                                    detectDragGesturesAfterLongPress(
-                                                        onDragStart = { local ->
-                                                            val bounds = cardBounds[task.id]
-                                                            dragTask = task
-                                                            pointer = (bounds?.topLeft ?: Offset.Zero) + local
-                                                            cardSize = bounds?.size ?: Size.Zero
-                                                            hoverPhase = null
-                                                        },
-                                                        onDrag = { change, amount ->
-                                                            change.consume()
-                                                            pointer += amount
-                                                            hoverPhase = columnBounds.entries
-                                                                .firstOrNull { it.value.contains(pointer) }
-                                                                ?.key
-                                                        },
-                                                        onDragEnd = {
-                                                            val taskNow = dragTask
-                                                            val target = hoverPhase
-                                                            if (taskNow != null && target != null && target != phaseForTask(taskNow)) {
-                                                                viewModel.moveTask(taskNow, statusForPhase(target))
-                                                            }
-                                                            dragTask = null
-                                                            hoverPhase = null
-                                                            lastDragEnd = System.currentTimeMillis()
-                                                        },
-                                                        onDragCancel = {
-                                                            dragTask = null
-                                                            hoverPhase = null
-                                                            lastDragEnd = System.currentTimeMillis()
-                                                        }
-                                                    )
-                                                }
-                                        ) {
-                                            TaskCard(task)
-                                        }
-                                        Spacer(Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                            if (index < boardColumns.lastIndex) {
-                                Box(
-                                    Modifier
-                                        .width(1.dp)
-                                        .fillMaxHeight()
-                                        .padding(vertical = 6.dp)
-                                        .background(MaterialTheme.colorScheme.outlineVariant)
+                    LazyColumn(
+                        contentPadding = PaddingValues(
+                            start = space.gutter,
+                            end = space.gutter,
+                            top = space.md,
+                            bottom = 120.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(space.rowGap)
+                    ) {
+                        if (state.error != null) {
+                            item("error") { OfflineBanner(onRetry = { viewModel.retryConnection() }) }
+                        }
+                        if (filter != "all" && filtered.isNotEmpty()) {
+                            item("meter") { CompletionMeter(done = doneCount, total = filtered.size) }
+                        }
+                        when {
+                            state.loading && state.tasks.isEmpty() -> item("skeleton") { SkeletonRows(5) }
+                            filtered.isEmpty() -> item("empty") {
+                                EmptyState(
+                                    title = "Nothing here",
+                                    body = when (filter) {
+                                        "overdue" -> "No overdue tasks. Enjoy the quiet."
+                                        "today" -> "Nothing due today. Add one or braindump it."
+                                        else -> "Your board is clear. Add a task or speak one."
+                                    },
+                                    actionLabel = "Add a task",
+                                    onAction = onAdd
                                 )
-                                Spacer(Modifier.width(12.dp))
+                            }
+                            else -> {
+                                val groups = groupTasks(filtered, filter)
+                                groups.forEach { (title, tasks) ->
+                                    item(key = "h-$title") {
+                                        SectionTitle(
+                                            text = title,
+                                            trailing = "${tasks.size}",
+                                            modifier = Modifier.padding(top = space.sm)
+                                        )
+                                    }
+                                    itemsIndexed(tasks, key = { _, task -> task.id }) { index, task ->
+                                        TaskRow(
+                                            task = task,
+                                            highlighted = index % 2 == 0,
+                                            onToggle = { onToggle(task) },
+                                            onClick = { onOpen(task.id) },
+                                            onLongPress = { movingTask = task },
+                                            projectDotColor = task.projectId?.let { projectColors[it] }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             } else {
-                Column(Modifier.padding(horizontal = 20.dp)) {
-                    listOf(
-                        "Backlog" to filtered.filter { it.status == "backlog" || it.status == "inbox" || it.status == "todo" },
-                        "Research" to filtered.filter { it.status == "research" },
-                        "Sprint" to filtered.filter { it.status == "sprint" || it.status == "in_progress" },
-                        "Review" to filtered.filter { it.status == "review" || it.status == "waiting" },
-                        "Done" to filtered.filter { it.status == "done" }
-                    ).forEach { (label, group) ->
-                        if (group.isNotEmpty()) {
-                            Text(
-                                label.uppercase(),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 14.dp, bottom = 4.dp)
-                            )
-                            group.forEach { task ->
-                                TaskRow(task, onOpen = { onOpen(task.id) }, onToggle = { onToggle(task) })
-                            }
-                        }
-                    }
-                }
+                BoardBody(
+                    tasks = filtered,
+                    projectColors = projectColors,
+                    onAdd = onAdd,
+                    onOpen = onOpen,
+                    onToggle = onToggle,
+                    onLongPress = { movingTask = it }
+                )
             }
-            Spacer(Modifier.height(100.dp))
-        }
 
-        dragTask?.let { task ->
-            val width = with(density) {
-                if (cardSize.width > 0f) cardSize.width.toDp() else 220.dp
-            }
-            Box(Modifier.fillMaxSize().zIndex(10f)) {
-                Card(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                (pointer.x - with(density) { width.toPx() } / 2f).roundToInt(),
-                                (pointer.y - with(density) { 58.dp.toPx() } / 2f).roundToInt()
-                            )
+            FabCluster(
+                onMic = onVoice,
+                onAdd = onAdd,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = space.gutter, bottom = space.lg)
+            )
+        }
+    }
+
+    if (showSearch) {
+        SearchOverlay(
+            initialTasks = state.tasks,
+            onDismiss = {
+                showSearch = false
+                viewModel.refresh()
+            },
+            onQuery = viewModel::search,
+            onOpen = onOpen
+        )
+    }
+
+    movingTask?.let { task ->
+        NumoSheet(onDismiss = { movingTask = null }) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = space.gutter)
+                    .padding(bottom = space.xxl)
+            ) {
+                Text(task.title, style = NumoTheme.type.titleL, color = c.ink, maxLines = 2)
+                Spacer(Modifier.height(space.md))
+                SectionTitle("Move to")
+                Spacer(Modifier.height(space.sm))
+                StatusColumns.forEach { column ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .clip(NumoTheme.radius.control)
+                            .clickable {
+                                viewModel.moveTask(task, column.status)
+                                movingTask = null
+                            }
+                            .padding(horizontal = space.md),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(column.label, style = NumoTheme.type.titleM, color = c.ink)
+                        Spacer(Modifier.weight(1f))
+                        if (task.status == column.status) {
+                            Text("current", style = NumoTheme.type.meta, color = c.muted)
                         }
-                        .width(width)
-                        .zIndex(11f),
-                    shape = MaterialTheme.shapes.large,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 14.dp)
-                ) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(
-                            task.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 }
+                Spacer(Modifier.height(space.sm))
                 Text(
-                    hoverPhase?.let { key -> boardColumns.firstOrNull { it.key == key }?.label } ?: "Drag to a phase",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.inverseOnSurface,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 16.dp)
-                        .background(MaterialTheme.colorScheme.inverseSurface, RoundedCornerShape(99.dp))
-                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                    "Long-press any card to change its status.",
+                    style = NumoTheme.type.meta,
+                    color = c.muted
                 )
             }
         }
@@ -403,34 +300,205 @@ fun TasksScreen(
 }
 
 @Composable
-private fun TabButton(label: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-        shape = RoundedCornerShape(7.dp),
-        modifier = Modifier.clickable(onClick = onClick)
+private fun BoardBody(
+    tasks: List<Task>,
+    projectColors: Map<String, Color?>,
+    onAdd: () -> Unit,
+    onOpen: (String) -> Unit,
+    onToggle: (Task) -> Unit,
+    onLongPress: (Task) -> Unit
+) {
+    val c = NumoTheme.colors
+    val space = NumoTheme.space
+    Row(
+        Modifier
+            .fillMaxSize()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = space.gutter, vertical = space.md),
+        horizontalArrangement = Arrangement.spacedBy(space.md)
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-        )
+        StatusColumns.forEach { column ->
+            val columnTasks = tasks.filter { task ->
+                when (column.status) {
+                    "todo" -> task.status in listOf("todo", "inbox", "backlog")
+                    "done" -> task.isDone
+                    else -> task.status == column.status
+                }
+            }
+            val (tint, ink) = columnColors(column.status)
+            Column(Modifier.width(232.dp).fillMaxHeight()) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(NumoTheme.radius.pill)
+                        .background(tint)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(column.label, style = NumoTheme.type.label, color = ink)
+                    Spacer(Modifier.width(6.dp))
+                    Text("${columnTasks.size}", style = NumoTheme.type.label, color = ink.copy(alpha = 0.7f))
+                    Spacer(Modifier.weight(1f))
+                    Icon(
+                        Icons.Rounded.Add,
+                        contentDescription = "Add ${column.label} task",
+                        tint = ink,
+                        modifier = Modifier
+                            .clip(NumoTheme.radius.pill)
+                            .clickable(onClick = onAdd)
+                            .size(20.dp)
+                    )
+                }
+                Spacer(Modifier.height(space.sm))
+                Column(
+                    Modifier
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(space.sm)
+                ) {
+                    if (columnTasks.isEmpty()) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(72.dp)
+                                .clip(NumoTheme.radius.row)
+                                .background(c.surfaceWarmSoft),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Empty", style = NumoTheme.type.meta, color = c.muted)
+                        }
+                    } else {
+                        columnTasks.forEach { task ->
+                            TaskRow(
+                                task = task,
+                                highlighted = false,
+                                onToggle = { onToggle(task) },
+                                onClick = { onOpen(task.id) },
+                                onLongPress = { onLongPress(task) },
+                                projectDotColor = task.projectId?.let { projectColors[it] }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(80.dp))
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun FilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-        shape = RoundedCornerShape(99.dp),
-        border = if (selected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 6.dp)
-        )
+private fun columnColors(status: String): Pair<Color, Color> {
+    val c = NumoTheme.colors
+    return when (status) {
+        "in_progress" -> c.warningSoft to c.inkBody
+        "waiting" -> c.magentaSoft to c.magenta
+        "done" -> c.successSoft to c.successStrong
+        else -> c.brandSoft to c.brandStrong
     }
 }
+
+@Composable
+private fun SearchOverlay(
+    initialTasks: List<Task>,
+    onDismiss: () -> Unit,
+    onQuery: (String) -> Unit,
+    onOpen: (String) -> Unit
+) {
+    val c = NumoTheme.colors
+    val space = NumoTheme.space
+    var query by remember { mutableStateOf("") }
+
+    LaunchedEffect(query) {
+        if (query.isBlank()) return@LaunchedEffect
+        delay(350)
+        onQuery(query)
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(c.canvas)
+            .statusBarsPadding()
+            .padding(horizontal = space.gutter)
+    ) {
+        Spacer(Modifier.height(space.md))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Search tasks", style = NumoTheme.type.bodyM, color = c.muted) },
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = c.muted) },
+                singleLine = true,
+                shape = NumoTheme.radius.control,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(space.sm))
+            Icon(
+                Icons.Rounded.Close,
+                contentDescription = "Close search",
+                tint = c.inkBody,
+                modifier = Modifier
+                    .clip(NumoTheme.radius.pill)
+                    .clickable(onClick = onDismiss)
+                    .padding(10.dp)
+                    .size(22.dp)
+            )
+        }
+        Spacer(Modifier.height(space.md))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(space.rowGap)) {
+            if (query.isBlank()) {
+                item {
+                    Text(
+                        "Type to search titles, notes and tags.",
+                        style = NumoTheme.type.meta,
+                        color = c.muted
+                    )
+                }
+            } else if (initialTasks.isEmpty()) {
+                item {
+                    EmptyState(
+                        title = "No matches",
+                        body = "Try a shorter word, or search a project name."
+                    )
+                }
+            } else {
+                itemsIndexed(initialTasks, key = { _, task -> task.id }) { index, task ->
+                    TaskRow(
+                        task = task,
+                        highlighted = index % 2 == 0,
+                        onToggle = {},
+                        onClick = { onOpen(task.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun groupTasks(tasks: List<Task>, filter: String): List<Pair<String, List<Task>>> {
+    if (filter != "all") {
+        return listOf(statusLabel(filter) to tasks)
+    }
+    val inbox = tasks.filter { it.projectName.isNullOrBlank() }
+    val byProject = tasks.filterNot { it.projectName.isNullOrBlank() }
+        .groupBy { it.projectName ?: "" }
+        .toSortedMap()
+    val groups = mutableListOf<Pair<String, List<Task>>>()
+    if (inbox.isNotEmpty()) groups.add("Inbox" to inbox)
+    byProject.forEach { (name, list) -> groups.add(name to list) }
+    return groups
+}
+
+private fun initialsOf(name: String?): String? {
+    if (name.isNullOrBlank()) return null
+    val parts = name.trim().split(" ").filter { it.isNotBlank() }
+    return when (parts.size) {
+        0 -> null
+        1 -> parts[0].take(1)
+        else -> parts[0].take(1) + parts.last().take(1)
+    }
+}
+
+private fun parseColorOrNull(hex: String?): Color? = runCatching {
+    if (hex.isNullOrBlank()) null else Color(android.graphics.Color.parseColor(hex))
+}.getOrNull()
