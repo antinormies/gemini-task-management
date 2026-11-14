@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.remember
 import id.ai.antaratask.ui.GtmApp
-import id.ai.antaratask.ui.theme.GtmTheme
+import id.ai.antaratask.ui.theme.NumoThemeProvider
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -14,7 +14,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = AppContainer(applicationContext)
         setContent {
-            GtmTheme {
+            NumoThemeProvider {
                 val viewModel = remember { MainViewModel(container.repository, container.tts) }
                 GtmApp(viewModel)
             }
