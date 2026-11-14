@@ -313,12 +313,11 @@ All screens are edge-to-edge with `WindowInsets` handling; the status bar takes 
 colour of the region behind it.
 
 ### 6.1 Login
-White canvas, 18dp gutter. Top 35%: brand mark (rounded 28dp square, `brand` fill,
-white spark glyph) + wordmark `displayM`. Hero `displayXL` "AntaraTask", then a
-`surfaceWarm` card (radius 28) with three `bodyM` lines explaining the voice capture
-loop (mic → transcript → proposal → your confirmation). Primary button "Continue with
-Google" (52dp, `brand`) with the Google glyph. Fine print `meta` `muted`: audio stays on
-the phone; only the transcript is sent. States: loading (button shows an inline spinner
+**Split layout** (Jev tournament X6): saturated `brand` top half carrying the mark
+(rounded 28dp white-on-brand spark tile), wordmark and a `displayXL` claim; bottom half
+is a white `sheet`-radius panel with the explainer lines (mic → transcript → proposal →
+your confirmation), the primary "Continue with Google" button and the privacy fine
+print. Fine print `meta` `muted`: audio stays on the phone; only the transcript is sent. States: loading (button shows an inline spinner
 and disables), error (`dangerSoft` block with `dangerStrong` text, retry stays available).
 
 ### 6.2 Speak (default tab)
@@ -336,9 +335,10 @@ Footer hint `meta` `muted`: "Nothing was saved — the orb is ready". If the mic
 is missing, show `NumoAlertDialog` *before* requesting it, with the privacy sentence.
 
 ### 6.3 Tasks — list (default, Jev D3 = `list_first`)
-`AppHeader` with `brand` band: progress ring? no — streak pill, title "Today" with
-chevron (scope: Today / All / project), gift + avatar, then filter chips
-(All · Today · Overdue · + project chips). Body on `canvas`:
+`AppHeader` in **compact band** mode (Jev tournament X1): `displayM` title so the band
+stays short and the list keeps the screen. Band = streak pill, title with chevron
+(scope: Today / All / project), gift + avatar, filter chips and the Board/List
+segmented control on the same band. Body on `canvas`:
 - 18dp gutter, rows from §5.3, 10dp gaps.
 - Grouped variant inserts a `SectionTitle` (label `muted`, 24dp above, 12dp below) per
   project, with the group's active count.
@@ -375,7 +375,7 @@ wide**, 12dp gaps, horizontally scrollable, canvas background.
 Save is explicit; a 409 conflict shows a `dangerSoft` notice "This task changed — review
 again" and keeps the sheet open.
 
-### 6.6 Quick add (composer)
+### 6.6 Quick add (composer, Jev tournament X4 = `full_canvas`)
 Full-screen `brand` canvas (§5.9) with the card stack: title card (scope pill "Public ⌄"
 + big title input) → subtasks row → effort chips → Task/Routines tiles → scope rows
 (Today / Tomorrow / Select date / Someday) → tags card → private note card. Submit FAB
@@ -383,8 +383,9 @@ Full-screen `brand` canvas (§5.9) with the card stack: title card (scope pill "
 FAB stays 16dp above the IME.
 
 ### 6.7 System
-White canvas, `displayL` "System". 2×2 `StatTile` grid (18dp gutter, 10dp gaps): total
-tasks, done this week, AI runs (30d), voice captures. Then:
+White canvas, `displayL` "System". A single inline figure strip (Jev tournament X5 =
+`list_rows`): total tasks · done this week · AI requests · voice captures, rendered as
+`StatFigure`s in one row, then settings-style rows for everything else. Then:
 - `surfaceWarm` card: "AI usage · 7 days", `UsageBars`, total cost `meta`.
 - Storage card: `StorageBar` + legend (DB / backups / logs / workspace).
 - Engine card: `SettingsRow`s (model, speech recognizer, schema, FTS index, last run).
