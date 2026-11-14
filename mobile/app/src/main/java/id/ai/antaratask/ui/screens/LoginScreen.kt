@@ -190,7 +190,7 @@ fun LoginScreen(state: UiState, onToken: (String) -> Unit) {
                     "Audio is handled by your phone's speech service. "
                         + "Only the transcript is sent.",
                     style = t.meta,
-                    color = c.mutedSoft
+                    color = c.muted
                 )
             }
             Spacer(Modifier.height(space.huge))

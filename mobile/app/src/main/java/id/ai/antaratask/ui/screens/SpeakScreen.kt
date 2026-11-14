@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
@@ -54,12 +57,14 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
     val t = NumoTheme.type
     val space = NumoTheme.space
     var showTypeDialog by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
 
     Column(
         Modifier
             .fillMaxSize()
             .background(c.canvas)
             .verticalScroll(rememberScrollState())
+            .statusBarsPadding()
             .padding(horizontal = space.gutter)
     ) {
         Spacer(Modifier.height(space.md))
@@ -117,7 +122,7 @@ fun SpeakScreen(state: UiState, viewModel: MainViewModel, onOrb: () -> Unit) {
         Text(
             text = voiceHint(state.voiceState),
             style = t.meta,
-            color = c.mutedSoft,
+            color = c.muted,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -232,6 +237,7 @@ private fun SkeletonCard() {
 private fun CaptureCard(state: UiState, viewModel: MainViewModel) {
     val c = NumoTheme.colors
     val t = NumoTheme.type
+    val haptics = LocalHapticFeedback.current
     val proposal = state.proposal
     val title = proposal?.preview?.firstOrNull()?.title
         ?: state.transcript.take(60).ifBlank { "Captured task" }
@@ -256,6 +262,7 @@ private fun CaptureCard(state: UiState, viewModel: MainViewModel) {
             PrimaryButton(
                 label = if (needsReview) "Review and add" else "Add to your tasks",
                 onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     if (needsReview) viewModel.reviewProposal() else viewModel.applyProposal()
                 },
                 modifier = Modifier.fillMaxWidth()

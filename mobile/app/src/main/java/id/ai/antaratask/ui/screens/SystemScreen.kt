@@ -267,14 +267,14 @@ fun SystemScreen(state: UiState, viewModel: MainViewModel) {
                 Icon(
                     Icons.Rounded.Refresh,
                     contentDescription = null,
-                    tint = c.mutedSoft,
+                    tint = c.muted,
                     modifier = Modifier.height(14.dp)
                 )
                 Spacer(Modifier.height(0.dp))
                 Text(
                     "AntaraTask 0.1.0 · Audio stays on your phone. Only the transcript is sent.",
                     style = t.meta,
-                    color = c.mutedSoft
+                    color = c.muted
                 )
             }
         }

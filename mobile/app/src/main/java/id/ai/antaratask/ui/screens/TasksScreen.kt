@@ -46,7 +46,7 @@ import id.ai.antaratask.UiState
 import id.ai.antaratask.data.Task
 import id.ai.antaratask.ui.components.AppHeader
 import id.ai.antaratask.ui.components.AvatarBadge
-import id.ai.antaratask.ui.components.ChipRow
+import id.ai.antaratask.ui.components.FilterChip
 import id.ai.antaratask.ui.components.CompletionMeter
 import id.ai.antaratask.ui.components.EmptyState
 import id.ai.antaratask.ui.components.FabCluster
@@ -136,23 +136,24 @@ fun TasksScreen(
                 )
             },
             chips = {
-                ChipRow(
-                    items = listOf("All", "Today", "Overdue"),
-                    selected = when (filter) {
-                        "today" -> "Today"
-                        "overdue" -> "Overdue"
-                        else -> "All"
-                    },
-                    onSelect = { label ->
-                        filter = when (label) {
-                            "Today" -> "today"
-                            "Overdue" -> "overdue"
-                            else -> "all"
-                        }
-                    },
-                    onBand = true,
-                    modifier = Modifier.weight(1f)
-                )
+                listOf("All", "Today", "Overdue").forEach { label ->
+                    FilterChip(
+                        label = label,
+                        selected = when (filter) {
+                            "today" -> label == "Today"
+                            "overdue" -> label == "Overdue"
+                            else -> label == "All"
+                        },
+                        onClick = {
+                            filter = when (label) {
+                                "Today" -> "today"
+                                "Overdue" -> "overdue"
+                                else -> "all"
+                            }
+                        },
+                        onBand = true
+                    )
+                }
                 SegmentedToggle(
                     options = listOf("List", "Board"),
                     selectedIndex = if (listMode) 0 else 1,
@@ -357,15 +358,20 @@ private fun BoardBody(
                     verticalArrangement = Arrangement.spacedBy(space.sm)
                 ) {
                     if (columnTasks.isEmpty()) {
-                        Box(
+                        Row(
                             Modifier
                                 .fillMaxWidth()
-                                .height(72.dp)
+                                .height(56.dp)
                                 .clip(NumoTheme.radius.row)
-                                .background(c.surfaceWarmSoft),
-                            contentAlignment = Alignment.Center
+                                .background(c.surfaceWarmSoft)
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Empty", style = NumoTheme.type.meta, color = c.muted)
+                            Text(
+                                "No tasks",
+                                style = NumoTheme.type.meta,
+                                color = c.muted
+                            )
                         }
                     } else {
                         columnTasks.forEach { task ->

@@ -51,6 +51,7 @@ import id.ai.antaratask.data.Task
 import id.ai.antaratask.ui.components.BottomItem
 import id.ai.antaratask.ui.components.NumoAlertDialog
 import id.ai.antaratask.ui.components.NumoBottomBar
+import id.ai.antaratask.ui.components.ErrorToastPill
 import id.ai.antaratask.ui.components.ToastPill
 import id.ai.antaratask.ui.screens.LoginScreen
 import id.ai.antaratask.ui.screens.ProposalSheet
@@ -147,6 +148,14 @@ fun GtmApp(viewModel: MainViewModel) {
             viewModel.consumeToast()
         }
     }
+    // Errors outside the Speak stage are surfaced here (a failed save or a 409 conflict
+    // while the detail sheet is open has no inline place to land).
+    LaunchedEffect(state.error, state.tab) {
+        if (state.error != null && state.tab != Tab.SPEAK) {
+            delay(3600)
+            viewModel.clearError()
+        }
+    }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (state.paired) {
@@ -161,8 +170,10 @@ fun GtmApp(viewModel: MainViewModel) {
         return
     }
 
+    // Dark icons only when a light surface actually sits behind the status bar: the
+    // white Speak/System screens in light mode. The brand band always wants light icons.
     SystemBars(
-        darkStatusIcons = state.tab == Tab.SPEAK || state.tab == Tab.SYSTEM,
+        darkStatusIcons = !colors.isDark && state.tab != Tab.TASKS,
         darkNavIcons = !colors.isDark
     )
 
@@ -209,6 +220,18 @@ fun GtmApp(viewModel: MainViewModel) {
                 .padding(top = 12.dp)
         ) {
             ToastPill(state.toast ?: "")
+        }
+
+        AnimatedVisibility(
+            visible = state.toast == null && state.error != null && state.tab != Tab.SPEAK,
+            enter = fadeIn() + slideInVertically { -it },
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 12.dp)
+        ) {
+            ErrorToastPill(state.error ?: "")
         }
     }
 

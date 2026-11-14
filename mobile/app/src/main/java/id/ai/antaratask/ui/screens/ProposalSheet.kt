@@ -13,6 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import id.ai.antaratask.data.Proposal
@@ -34,6 +36,7 @@ fun ProposalSheet(
 ) {
     val c = NumoTheme.colors
     val space = NumoTheme.space
+    val haptics = LocalHapticFeedback.current
 
     NumoSheet(onDismiss = onDiscard) {
         Column(
@@ -83,7 +86,10 @@ fun ProposalSheet(
             Spacer(Modifier.height(space.lg))
             PrimaryButton(
                 label = "Apply",
-                onClick = onApply,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onApply()
+                },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(space.xs))

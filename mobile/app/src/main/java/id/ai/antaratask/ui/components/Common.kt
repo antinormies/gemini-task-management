@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -115,7 +120,7 @@ fun AppHeader(
     avatarInitials: String? = null,
     onTitleClick: (() -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
-    chips: (@Composable RowScope.() -> Unit)? = null
+    chips: (@Composable FlowRowScope.() -> Unit)? = null
 ) {
     val c = NumoTheme.colors
     val t = NumoTheme.type
@@ -166,9 +171,9 @@ fun AppHeader(
             }
             if (chips != null) {
                 Spacer(Modifier.height(if (compact) 10.dp else 14.dp))
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(NumoTheme.space.sm),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(NumoTheme.space.sm),
                     content = chips
                 )
             }
@@ -219,7 +224,7 @@ fun FilterChip(
                 }
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(label, style = NumoTheme.type.label, color = content, maxLines = 1)
@@ -283,7 +288,7 @@ fun SegmentedToggle(
                     .clip(NumoTheme.radius.pill)
                     .background(if (active) (if (onBand) c.onBrand else c.brand) else Color.Transparent)
                     .clickable { onSelect(index) }
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 11.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -376,6 +381,7 @@ fun TaskRow(
     projectDotColor: Color? = null
 ) {
     val c = NumoTheme.colors
+    val haptics = LocalHapticFeedback.current
     val done = task.isDone
     val alpha by animateFloatAsState(if (done) 0.6f else 1f, label = "rowAlpha")
     val background by animateColorAsState(
@@ -410,7 +416,10 @@ fun TaskRow(
         }
         NumoCheckbox(
             checked = done,
-            onToggle = onToggle,
+            onToggle = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onToggle()
+            },
             contentDescription = if (done) "Reopen ${task.title}" else "Complete ${task.title}"
         )
         Spacer(Modifier.width(12.dp))
@@ -576,6 +585,45 @@ fun SecondaryButton(
     ActionPill(label, onClick, c.surface, c.ink, modifier, border = c.lineStrong, enabled = enabled)
 }
 
+/**
+ * Action for a saturated brand canvas, where PrimaryButton would vanish into the fill.
+ * Enabled: white pill, brand label. Disabled: outline + translucent label, which stays
+ * legible on blue where a faded fill would not.
+ */
+@Composable
+fun InvertedButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    val c = NumoTheme.colors
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(NumoTheme.size.controlHeight)
+            .clip(NumoTheme.radius.pill)
+            .background(if (enabled) c.onBrand else Color.Transparent)
+            .then(
+                if (enabled) {
+                    Modifier
+                } else {
+                    Modifier.border(1.5.dp, c.onBrand.copy(alpha = 0.7f), NumoTheme.radius.pill)
+                }
+            )
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = NumoTheme.type.titleM,
+            color = if (enabled) c.brandStrong else c.onBrand.copy(alpha = 0.7f)
+        )
+    }
+}
+
 @Composable
 fun GhostButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
@@ -654,7 +702,9 @@ fun NumoBottomBar(
     ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
         Row(
-            Modifier.fillMaxWidth().height(NumoTheme.size.bottomBar),
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = NumoTheme.size.bottomBar),
             verticalAlignment = Alignment.CenterVertically
         ) {
             items.forEachIndexed { index, item ->
@@ -663,8 +713,8 @@ fun NumoBottomBar(
                 Column(
                     Modifier
                         .weight(1f)
-                        .height(NumoTheme.size.bottomBar)
                         .clickable { onSelect(index) }
+                        .padding(vertical = NumoTheme.space.sm)
                         .semantics { contentDescription = item.label },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
@@ -689,7 +739,14 @@ fun NumoBottomBar(
                         }
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text(item.label, style = NumoTheme.type.label, color = color)
+                    Text(
+                        item.label,
+                        style = NumoTheme.type.label,
+                        color = color,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Spacer(Modifier.height(3.dp))
                     Box(
                         Modifier
@@ -800,6 +857,21 @@ fun ToastPill(text: String, modifier: Modifier = Modifier) {
         Icon(Icons.Rounded.Check, contentDescription = null, tint = c.onBrand, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Text(text, style = NumoTheme.type.titleM, color = c.onBrand)
+    }
+}
+
+/** Error counterpart to ToastPill, used where the screen has no inline error block. */
+@Composable
+fun ErrorToastPill(text: String, modifier: Modifier = Modifier) {
+    val c = NumoTheme.colors
+    Row(
+        modifier
+            .clip(NumoTheme.radius.pill)
+            .background(c.dangerSoft)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text, style = NumoTheme.type.label, color = c.dangerStrong)
     }
 }
 
@@ -947,7 +1019,11 @@ internal fun dueLabel(task: Task): String? {
     return when {
         date == today -> time.ifEmpty { "Today" }
         date == today.plusDays(1) -> "Tmrw" + if (time.isEmpty()) "" else " $time"
-        else -> date.format(DateTimeFormatter.ofPattern("d MMM", Locale.ROOT))
+        else -> {
+            // Locale.ROOT has no month names on Android/ICU ("6 M11"), so use the device locale.
+            val pattern = if (date.year == today.year) "d MMM" else "d MMM yyyy"
+            date.format(DateTimeFormatter.ofPattern(pattern, Locale.getDefault()))
+        }
     }
 }
 

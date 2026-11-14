@@ -2,10 +2,11 @@ package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import id.ai.antaratask.data.Project
-import id.ai.antaratask.ui.components.PrimaryButton
+import id.ai.antaratask.ui.components.InvertedButton
 import id.ai.antaratask.ui.components.SectionTitle
 import id.ai.antaratask.ui.components.StackCard
 import id.ai.antaratask.ui.theme.NumoTheme
@@ -149,11 +149,10 @@ fun QuickAddDialog(
                     Column {
                         SectionTitle("Project")
                         Spacer(Modifier.height(space.sm))
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(space.sm)
+                        FlowRow(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(space.sm),
+                            verticalArrangement = Arrangement.spacedBy(space.sm)
                         ) {
                             SelectChip("Inbox", projectId == null) { projectId = null }
                             projects.forEach { project ->
@@ -204,11 +203,10 @@ fun QuickAddDialog(
                     Column {
                         SectionTitle("Priority")
                         Spacer(Modifier.height(space.sm))
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(space.sm)
+                        FlowRow(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(space.sm),
+                            verticalArrangement = Arrangement.spacedBy(space.sm)
                         ) {
                             PriorityOptions.forEach { option ->
                                 SelectChip(
@@ -221,7 +219,7 @@ fun QuickAddDialog(
                 }
 
                 Spacer(Modifier.height(space.lg))
-                PrimaryButton(
+                InvertedButton(
                     label = "Add task",
                     onClick = {
                         onCreate(
@@ -234,30 +232,9 @@ fun QuickAddDialog(
                     enabled = canSubmit,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(space.huge))
+                Spacer(Modifier.height(space.xxl))
             }
 
-            Box(
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .navigationBarsPadding()
-                    .imePadding()
-                    .padding(end = space.gutter, bottom = space.lg)
-                    .size(NumoTheme.size.submitFab)
-                    .clip(CircleShape)
-                    .background(if (canSubmit) c.surface else c.surface.copy(alpha = 0.55f))
-                    .clickable(enabled = canSubmit) {
-                        onCreate(title.trim(), projectId, priority, WhenOptions[dueIndex].due())
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.ArrowUpward,
-                    contentDescription = "Save task",
-                    tint = if (canSubmit) c.brand else c.muted,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
         }
     }
 }

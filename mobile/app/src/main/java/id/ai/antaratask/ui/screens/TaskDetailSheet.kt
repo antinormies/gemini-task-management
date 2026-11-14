@@ -1,11 +1,13 @@
 package id.ai.antaratask.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -72,11 +74,29 @@ fun TaskDetailSheet(
                 .padding(horizontal = space.gutter)
                 .padding(bottom = 96.dp)
         ) {
-            Text(
-                "${task.shortKey} · ${statusLabel(task.status)} · v${task.version}",
-                style = NumoTheme.type.label,
-                color = c.muted
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${task.shortKey} · ${statusLabel(task.status)} · v${task.version}",
+                    style = NumoTheme.type.label,
+                    color = c.muted,
+                    modifier = Modifier.weight(1f)
+                )
+                Box(
+                    Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(c.surfaceWarm)
+                        .clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = "Close task",
+                        tint = c.inkBody,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
             Spacer(Modifier.height(space.sm))
             Row(verticalAlignment = Alignment.Top) {
                 Spacer(Modifier.height(4.dp))
@@ -90,11 +110,10 @@ fun TaskDetailSheet(
             }
 
             Spacer(Modifier.height(space.md))
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScrollable(),
-                horizontalArrangement = Arrangement.spacedBy(space.sm)
+            FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(space.sm),
+                verticalArrangement = Arrangement.spacedBy(space.sm)
             ) {
                 InfoChip(statusLabel(task.status), c.brandSoft, c.brandStrong)
                 PriorityChip(task.priority) {
@@ -106,19 +125,19 @@ fun TaskDetailSheet(
             }
 
             Spacer(Modifier.height(space.lg))
-            StackCard(color = c.surface) {
+            StackCard(color = c.surfaceWarm) {
                 Column {
                     KeyValueRow("Status", statusLabel(task.status))
                     KeyValueRow("Priority", task.priority.replaceFirstChar { it.uppercase() })
                     KeyValueRow("Project", task.projectName ?: "Inbox")
                     KeyValueRow("Estimate", estimateLabel(task.estimateMinutes) ?: "—")
                     KeyValueRow("Due", dueLabel(task) ?: "—")
-                    KeyValueRow("Updated", task.events.lastOrNull()?.createdAt?.take(16)?.replace("T", " ") ?: "—")
+                    KeyValueRow("Updated", formatTimestamp(task.events.lastOrNull()?.createdAt))
                 }
             }
 
             Spacer(Modifier.height(space.md))
-            StackCard(color = c.surface) {
+            StackCard(color = c.surfaceWarmSoft) {
                 Column {
                     SectionTitle("Subtasks", trailing = task.subtasks.size.toString())
                     Spacer(Modifier.height(space.sm))
@@ -197,11 +216,10 @@ fun TaskDetailSheet(
                 Column {
                     SectionTitle("Move to")
                     Spacer(Modifier.height(space.sm))
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .horizontalScrollable(),
-                        horizontalArrangement = Arrangement.spacedBy(space.sm)
+                    FlowRow(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(space.sm),
+                        verticalArrangement = Arrangement.spacedBy(space.sm)
                     ) {
                         listOf("todo", "in_progress", "waiting", "done").forEach { status ->
                             val active = task.status == status
@@ -323,6 +341,14 @@ private fun nextPriority(current: String): String = when (current) {
     else -> "none"
 }
 
-@Composable
-private fun Modifier.horizontalScrollable(): Modifier =
-    this.horizontalScroll(rememberScrollState())
+private fun formatTimestamp(raw: String?): String {
+    if (raw.isNullOrBlank()) return "—"
+    val parsed = id.ai.antaratask.ui.components.parseDue(raw)
+        ?: return raw.take(16).replace("T", " ")
+    return parsed.format(
+        java.time.format.DateTimeFormatter.ofPattern(
+            "d MMM yyyy · HH:mm",
+            java.util.Locale.getDefault()
+        )
+    )
+}
