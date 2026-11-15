@@ -244,7 +244,7 @@ colour transition, 60dp glyph, 52dp stop square with a 16dp radius, only these s
 | State | Fill | Glyph | Extra |
 |---|---|---|---|
 | `idle` | `warning` | white mic | none |
-| `connecting` | `brand` | white mic waves | 2 static rings |
+| `connecting` | `brand` | white mic | halo bands, same as listening |
 | `listening` | `danger` | white 52dp rounded-square stop | 2 stroked halo bands expanding 1.0×→1.45× radius, 1200ms loop, alpha 0.26→0 |
 | `thinking` | `success` | three white dots | dots bounce 900ms |
 | `captured` | `success` | white check | single 280ms scale pop |
