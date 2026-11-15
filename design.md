@@ -232,19 +232,20 @@ The Speak screen's body.
 3. State label 12dp above the orb: `label` in the state colour
    (`warning` idle → "Hold and speak"; `danger` error; `success` thinking →
    "Your tasks incoming…").
-4. `StateOrb` 150dp centred.
+4. `StateOrb` — 156dp filled disc inside a 232dp halo box, centred.
 5. `LanguagePill` 40dp, full radius, 1.5dp `lineStrong` outline, `meta` label.
 6. Result area: transcript card or capture card.
 7. Actions: `PrimaryButton` ("Add to your tasks") + `GhostButton` ("New braindump").
 
 ### 5.8 `StateOrb`
-150dp circle, 120ms colour transition, centred glyph 56dp, only these states:
+156dp filled disc (measured from the reference at 157pt) inside a 232dp halo box, 120ms
+colour transition, 60dp glyph, 52dp stop square with a 16dp radius, only these states:
 
 | State | Fill | Glyph | Extra |
 |---|---|---|---|
 | `idle` | `warning` | white mic | none |
 | `connecting` | `brand` | white mic waves | 2 static rings |
-| `listening` | `danger` | white rounded-square stop | 3 expanding rings, 1200ms loop |
+| `listening` | `danger` | white 52dp rounded-square stop | 2 stroked halo bands expanding 1.0×→1.45× radius, 1200ms loop, alpha 0.26→0 |
 | `thinking` | `success` | three white dots | dots bounce 900ms |
 | `captured` | `success` | white check | single 280ms scale pop |
 | `error` | `danger` | white alert-triangle | static |
@@ -576,5 +577,9 @@ Found only by running the build on real hardware, not by compiling:
    derives from the palette, not the tab alone.
 9. At 200% font scale the header chips collided with the segmented toggle and the bottom
    bar clipped its labels — the band is now a `FlowRow` and the bar uses `heightIn(min)`.
+10. The voice disc was 96dp against a measured 157pt reference, with the stop square at
+   29% of the disc instead of 35%, and the halo drawn as 3dp strokes instead of wide
+   bands. Re-measured from the screenshots and corrected (§5.8). The disc also sat at 37%
+   of the height; the flexible weights now hold it near 53–57%.
 
 Full reproduction log and screenshots: `.agents/design/verification.md`.

@@ -34,7 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -42,9 +42,13 @@ import id.ai.antaratask.VoiceState
 import id.ai.antaratask.ui.theme.NumoTheme
 
 /**
- * The voice state circle. Idle orange, listening red with expanding rings, thinking
- * green with three bouncing dots, captured green check, error red alert. The rings and
- * dots are the app's only decorative loops and are frozen under reduced motion.
+ * The voice state disc.
+ *
+ * Geometry is taken from the reference rather than invented: a 156dp filled disc, a 60dp
+ * glyph, a 52dp stop square, and two thick translucent halo bands that expand outward
+ * while recording. Idle orange, listening red, thinking green, captured green check,
+ * error red alert. The halo and the dots are the app's only decorative loops and they
+ * freeze under reduced motion.
  */
 @Composable
 fun StateOrb(
@@ -53,6 +57,7 @@ fun StateOrb(
     modifier: Modifier = Modifier
 ) {
     val c = NumoTheme.colors
+    val size = NumoTheme.size
     val reduced = NumoTheme.reducedMotion
     val targetFill = when (state) {
         VoiceState.IDLE -> c.warning
@@ -67,10 +72,7 @@ fun StateOrb(
         animationSpec = tween(NumoTheme.motion.quick),
         label = "orbFill"
     )
-    val glyphTint = when (state) {
-        VoiceState.CAPTURED -> c.onSuccess
-        else -> Color.White
-    }
+    val glyphTint = if (state == VoiceState.CAPTURED) c.onSuccess else Color.White
     val label = when (state) {
         VoiceState.IDLE -> "Start voice capture"
         VoiceState.CONNECTING -> "Connecting"
@@ -79,31 +81,42 @@ fun StateOrb(
         VoiceState.CAPTURED -> "Task captured"
         VoiceState.ERROR -> "Something went wrong. Tap to retry."
     }
-    val showRings = state == VoiceState.LISTENING
-    val ringPhase = if (showRings) recordingPhase(enabled = !reduced) else 0f
+    // Light: wide pale bands, as in the reference. Dark: a wide translucent band over a
+    // near-black canvas desaturates to muddy brown, so dark gets a thin pulsing outline.
+    val darkHalo = c.isDark
+    val haloColor = if (darkHalo) lerp(c.danger, Color.White, 0.15f) else c.danger
+    val haloActive = state == VoiceState.LISTENING || state == VoiceState.CONNECTING
+    val phase = if (haloActive) haloPhase(enabled = !reduced) else 0f
 
     Box(
         modifier
-            .size(NumoTheme.size.orb)
+            .size(size.orb)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {
-        if (showRings) {
-            Canvas(Modifier.size(NumoTheme.size.orb)) {
-                val maxRadius = size.minDimension / 2f
-                repeat(3) { index ->
-                    val phase = (ringPhase + index / 3f) % 1f
-                    drawCircle(
-                        color = c.danger.copy(alpha = 0.30f * (1f - phase)),
-                        radius = maxRadius * (0.66f + 0.34f * phase),
-                        style = Stroke(width = 3.dp.toPx())
-                    )
+        if (haloActive) {
+            Canvas(Modifier.size(size.orb)) {
+                val discRadius = size.orbCore.toPx() / 2f
+                val maxRadius = this.size.minDimension / 2f
+                val band = if (darkHalo) 2.5.dp.toPx() else discRadius * 0.30f
+                // Stroked, not filled: overlapping filled discs read as a muddy blob.
+                repeat(2) { index ->
+                    val bandPhase = (phase + index * 0.5f) % 1f
+                    val radius = discRadius + band / 2f + discRadius * 0.36f * bandPhase
+                    if (radius + band / 2f <= maxRadius) {
+                        val alpha = (if (darkHalo) 0.55f else 0.26f) * (1f - bandPhase)
+                        drawCircle(
+                            color = haloColor.copy(alpha = alpha),
+                            radius = radius,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = band)
+                        )
+                    }
                 }
             }
         }
         Box(
             Modifier
-                .size(NumoTheme.size.orbCore)
+                .size(size.orbCore)
                 .clip(CircleShape)
                 .background(fill)
                 .clickable(onClick = onClick),
@@ -113,27 +126,27 @@ fun StateOrb(
                 VoiceState.THINKING -> ThinkingDots(tint = Color.White, animated = !reduced)
                 VoiceState.LISTENING -> Box(
                     Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(9.dp))
+                        .size(size.orbStop)
+                        .clip(RoundedCornerShape(16.dp))
                         .background(Color.White)
                 )
                 VoiceState.CAPTURED -> Icon(
                     Icons.Rounded.Check,
                     contentDescription = null,
                     tint = glyphTint,
-                    modifier = Modifier.size(NumoTheme.size.orbGlyph * 0.8f)
+                    modifier = Modifier.size(size.orbGlyph)
                 )
                 VoiceState.ERROR -> Icon(
                     Icons.Rounded.Warning,
                     contentDescription = null,
                     tint = glyphTint,
-                    modifier = Modifier.size(NumoTheme.size.orbGlyph * 0.8f)
+                    modifier = Modifier.size(size.orbGlyph)
                 )
                 else -> Icon(
                     Icons.Rounded.Mic,
                     contentDescription = null,
                     tint = glyphTint,
-                    modifier = Modifier.size(NumoTheme.size.orbGlyph * 0.8f)
+                    modifier = Modifier.size(size.orbGlyph)
                 )
             }
         }
@@ -141,9 +154,9 @@ fun StateOrb(
 }
 
 @Composable
-private fun recordingPhase(enabled: Boolean): Float {
+private fun haloPhase(enabled: Boolean): Float {
     if (!enabled) return 0.5f
-    val transition = rememberInfiniteTransition(label = "recording")
+    val transition = rememberInfiniteTransition(label = "halo")
     val phase by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -159,7 +172,7 @@ private fun recordingPhase(enabled: Boolean): Float {
 @Composable
 private fun ThinkingDots(tint: Color, animated: Boolean) {
     val transition = if (animated) rememberInfiniteTransition(label = "thinking") else null
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         repeat(3) { index ->
             val lift = if (transition == null) {
                 0f
@@ -178,8 +191,8 @@ private fun ThinkingDots(tint: Color, animated: Boolean) {
             }
             Spacer(
                 Modifier
-                    .size(9.dp)
-                    .offset(y = (lift * 4f).dp)
+                    .size(12.dp)
+                    .offset(y = (lift * 5f).dp)
                     .clip(CircleShape)
                     .background(tint)
             )
@@ -187,7 +200,7 @@ private fun ThinkingDots(tint: Color, animated: Boolean) {
     }
 }
 
-/** Outlined language pill shown under the orb. */
+/** Outlined language pill shown under the disc. */
 @Composable
 fun LanguagePill(label: String, modifier: Modifier = Modifier) {
     Box(

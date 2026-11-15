@@ -36,7 +36,8 @@ read from `backend/.env` at build time and never committed.
 |---|---|---|
 | `speak_light.png` | Speak | idle, light, status bar clear of the headline |
 | `speak_dark.png` | Speak | idle, dark, light status icons |
-| `speak_listening` (device run) | Speak | listening: red orb + three expanding rings, live badge |
+| `speak_listening_light.png` | Speak | listening: 156dp disc, 52dp stop square, wide pale halo band |
+| `speak_listening_dark.png` | Speak | listening in dark: thin pulsing outline instead of a wide band |
 | `tasks_light.png` | Tasks | list, compact band, chips + toggle on one line |
 | `tasks_dark.png` | Tasks | list, dark palette, warm row retained |
 | `board_light.png` | Tasks | board, 232dp columns, tinted header chips |
@@ -56,6 +57,26 @@ read from `backend/.env` at build time and never committed.
 - Board toggle; column headers and counts.
 - System actions render; destructive unpair is behind a confirmation dialog.
 - Dark mode switch (`cmd uimode night yes|no`) and font scale (`settings put system font_scale 2.0`).
+
+## Second pass — Speak composition (after review)
+
+The first shipped Speak screen was measured against the reference instead of eyeballed,
+which exposed a real sizing error:
+
+| Reference measurement | First build | Now |
+|---|---|---|
+| Disc diameter **157pt** | 96dp | **156dp** |
+| Mic glyph ≈ 48pt | 45dp | **60dp** (fills the disc like the reference) |
+| Stop square ≈ 55pt / 35% of disc | 28dp / 29% | **52dp / 33%** |
+| Halo: wide pale bands | 3 thin 3dp strokes | **30%-of-radius bands**, 1200ms expand |
+| Disc centre ≈ 62% of the frame | 37% | **53%** (frame here is shorter and carries a tab bar) |
+
+Also changed: the typed fallback moved from under the disc to the bottom of the screen so
+it no longer pushes the hero up, and the copy now says "disc" consistently.
+
+**Dark-mode halo:** a translucent red band over a near-black canvas desaturates to muddy
+brown. Dark now draws two thin pulsing outlines instead; light keeps the reference's wide
+pale band. Both are recorded in `VoiceOrb.kt`.
 
 ## Defects found here (all fixed)
 

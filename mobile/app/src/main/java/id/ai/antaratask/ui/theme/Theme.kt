@@ -223,9 +223,12 @@ data class NumoMotion(
 data class NumoSizes(
     val rowHeight: androidx.compose.ui.unit.Dp = 72.dp,
     val checkbox: androidx.compose.ui.unit.Dp = 26.dp,
-    val orb: androidx.compose.ui.unit.Dp = 150.dp,
-    val orbCore: androidx.compose.ui.unit.Dp = 96.dp,
-    val orbGlyph: androidx.compose.ui.unit.Dp = 56.dp,
+    // Measured from Numo: the filled disc is 157pt with a ~48pt mic and a 52pt stop
+    // square; the halo needs ~1.45x the radius to breathe.
+    val orb: androidx.compose.ui.unit.Dp = 232.dp,
+    val orbCore: androidx.compose.ui.unit.Dp = 156.dp,
+    val orbGlyph: androidx.compose.ui.unit.Dp = 60.dp,
+    val orbStop: androidx.compose.ui.unit.Dp = 52.dp,
     val micFab: androidx.compose.ui.unit.Dp = 48.dp,
     val addFab: androidx.compose.ui.unit.Dp = 60.dp,
     val submitFab: androidx.compose.ui.unit.Dp = 56.dp,
